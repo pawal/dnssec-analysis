@@ -41,7 +41,7 @@ sub main {
 
     my %super; # all json stuff in one giant hash
     foreach my $file (@all) {
-#    if ((stat($filename))[7] == 0) { next; };
+	# if ((stat($filename))[7] == 0) { next; };
 	open FILE, "$directory/$file" or die "Cannot read file domain/$file: $!";
 	my @j = <FILE>;
 	next if not defined $j[0];
@@ -55,7 +55,7 @@ sub main {
 	analyzeRcodes(\%super);
     }
 
-    print "keys: ".scalar keys(%super)."\n";
+    print "Domains with data: ".scalar keys(%super)."\n";
 }
 
 # find values in a hash by adressing it like this "key:key2:key3"
@@ -119,6 +119,9 @@ Required argument(s):
 Optional arguments:
 
     --rcode                  Analyze RCODEs
+    --lifetimes              Analyze RRSIG lifetimes
+    --keyalgo                Analyze DNSKEY algorithms
+    --iterations             Analyze NSEC3 iterations
 
 =head1 TODO
 

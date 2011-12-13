@@ -44,7 +44,6 @@ sub readDNS
     print "Quering DS for $name\n" if $DEBUG;
     my $answer = $res->query($name,'DS');
     if (defined $answer) {
-	my $i = 0; # temp counter (not used)
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'DS') {
@@ -63,7 +62,6 @@ sub readDNS
     $answer = $res->send($name,'DNSKEY');
     $result->{'dnskey'}->{'rcode'} = $answer->header->rcode;
     if (defined $answer) {
-	my $i = 0; # temp counter
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'DNSKEY') {
@@ -90,11 +88,9 @@ sub readDNS
     $answer = $res->send($name,'NSEC3PARAM');
     $result->{'nsec3param'}->{'rcode'} = $answer->header->rcode;
     if (defined $answer) {
-	my $i = 0; # temp counter (not used)
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'NSEC3PARAM') {
-		# (do not store for later)
 		$result->{'nsec3param'}->{'hashalgo'}   = $data->hashalgo;
 		$result->{'nsec3param'}->{'flags'}      = $data->flags;
 		$result->{'nsec3param'}->{'iterations'} = $data->iterations;
@@ -116,11 +112,9 @@ sub readDNS
     $answer = $res->send($name,'SOA');
     $result->{'soa'}->{'rcode'} = $answer->header->rcode;
     if (defined $answer) {
-	my $i = 0; # temp counter (not used)
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'SOA') {
-		# (do not store for later)
 		$result->{'soa'}->{'mname'}   = $data->mname;
 		$result->{'soa'}->{'rname'}   = $data->rname;
 		$result->{'soa'}->{'serial'}  = $data->serial;
@@ -145,7 +139,6 @@ sub readDNS
     $answer = $res->send($name,'A');
     $result->{'A'}->{'rcode'} = $answer->header->rcode;
     if (defined $answer) {
-	my $i = 0; # temp counter (not used)
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'A') {
@@ -169,7 +162,6 @@ sub readDNS
     $answer = $res->send($name,'MX');
     $result->{'MX'}->{'rcode'} = $answer->header->rcode;
     if (defined $answer) {
-	my $i = 0; # temp counter (not used)
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'MX') {
