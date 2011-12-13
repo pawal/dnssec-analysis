@@ -1,7 +1,7 @@
 This is a number of tools to collect DNS data for DNSSEC analysis.
 
 burngetzone.pl cleans a (signed) zone and extracts all domains (lnames) with DS records  
-burnds.pl      collects all DNSSEC realted data for later analysis (outputs JSON)  
+burnds.pl      collects all DNSSEC related data for later analysis (outputs JSON)  
 
 analyze.pl     for analysis of the JSON files with DNS info  
 
