@@ -1,8 +1,8 @@
-There are three tools in this repository (so far). They are the fundamental tools to
-collect DNS data for DNSSEC analysis.
+This is a number of tools to collect DNS data for DNSSEC analysis.
 
-burngetzone.pl cleans a (signed) zone and extracts all domains (lnames) with DS records
-burnds.pl      collects all DNSSEC realted data for later analysis (outputs JSON)
-queue.pl       for running burnds.pl, many threads
+burngetzone.pl cleans a (signed) zone and extracts all domains (lnames) with DS records  
+burnds.pl      collects all DNSSEC realted data for later analysis (outputs JSON)  
 
-analyze.pl     for analysis of the JSON files with DNS info
+analyze.pl     for analysis of the JSON files with DNS info  
+
+queue.sh       for running burnds.pl with many threads  
