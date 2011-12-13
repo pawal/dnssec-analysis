@@ -96,7 +96,9 @@ sub analyzeRcodes {
 	$result{'NSEC3PARAM:'.findValue($bighash->{$domain}, 'nsec3param:rcode')}++;
 	$result{'DNSKEY:'.findValue($bighash->{$domain},     'dnskey:rcode')}++;
     }
-    print Dumper(\%result);
+    foreach my $key (sort keys(%result)) {
+	print "$key: $result{$key}\n";
+    }
 }
 
 
