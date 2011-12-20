@@ -182,6 +182,30 @@ sub readDNS
 	}
     }
 
+    print "Quering ns for www.$name\n" if $DEBUG;
+    $answer = $res->send($name,'NS');
+    $result->{'NS'}->{'rcode'} = $answer->header->rcode;
+    if (defined $answer) {
+	foreach my $data ($answer->answer)
+	{
+	    if ($data->type eq 'NS') {
+		push @{$result->{'NS'}->{'list'}}, {
+		    'nsdname' => $data->nsdname,
+		};
+		print "NS www.$name: ".$data->address."\n" if $DEBUG;
+	    } elsif ($data->type eq 'RRSIG') {
+		push @{$result->{'rrsig'}}, {
+		    'siginception'  => $data->siginception,
+		    'sigexpiration' => $data->sigexpiration,
+		    'typecovered'   => $data->typecovered,
+		    'algorithm'     => $data->algorithm,
+		};
+		print "NS www.$name: ".$data->keytag."\n" if $DEBUG;
+	    }
+	}
+    }
+
+
     return $result;
 }
 
