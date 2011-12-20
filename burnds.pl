@@ -30,6 +30,15 @@ $res->dnssec(1);
 $res->cdflag(0);
 $res->udppacketsize(4096);
 
+# parent server for all delegations (a.ns.se for .se domains)
+# (we could also use a non-validating recursive resolver)
+my $fnsse = Net::DNS::Resolver->new;
+$fnsse->nameservers('192.71.53.53');
+$fnsse->recurse(0);
+$fnsse->dnssec(1);
+$fnsse->cdflag(0);
+$fnsse->udppacketsize(4096);
+
 # read and parse the zonefile, building a hash with the data we want
 sub readDNS
 {
@@ -183,16 +192,16 @@ sub readDNS
     }
 
     print "Quering ns for www.$name\n" if $DEBUG;
-    $answer = $res->send($name,'NS');
+    $answer = $fnsse->send($name,'NS');
     $result->{'NS'}->{'rcode'} = $answer->header->rcode;
     if (defined $answer) {
-	foreach my $data ($answer->answer)
+	foreach my $data ($answer->authority)
 	{
 	    if ($data->type eq 'NS') {
 		push @{$result->{'NS'}->{'list'}}, {
 		    'nsdname' => $data->nsdname,
 		};
-		print "NS www.$name: ".$data->address."\n" if $DEBUG;
+		print "NS $name: ".$data->nsdname."\n" if $DEBUG;
 	    } elsif ($data->type eq 'RRSIG') {
 		push @{$result->{'rrsig'}}, {
 		    'siginception'  => $data->siginception,
@@ -200,7 +209,6 @@ sub readDNS
 		    'typecovered'   => $data->typecovered,
 		    'algorithm'     => $data->algorithm,
 		};
-		print "NS www.$name: ".$data->keytag."\n" if $DEBUG;
 	    }
 	}
     }
