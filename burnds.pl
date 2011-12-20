@@ -24,7 +24,7 @@ my $rr = ""; # global rr var
 
 # global resolver
 my $res = Net::DNS::Resolver->new;
-$res->nameservers('127.0.0.1');
+$res->nameservers('212.247.18.10');
 $res->recurse(1);
 $res->dnssec(1);
 $res->cdflag(0);
