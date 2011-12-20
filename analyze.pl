@@ -13,13 +13,17 @@ use Pod::Usage;
 
 ### OPTIONS
 my $analyzeRcode;
+my $analyzeServfail;
 my $directory;
+my $limit = 0;
 
 # get command line options
 GetOptions(
     'help|?'        => \$help,
     'directory|d=s' => \$directory,
+    'limit|l=i'     => \$limit,
     'rcode'         => \$analyzeRcode,
+    'servfail'      => \$analyzeServfail,
     'verbose|v+'    => \$verbose,
     ) or pod2usage(2);
 
@@ -32,6 +36,10 @@ if ($help or not defined $directory) {
 main();
 #pod2usage(-exitstatus => 0);
 exit;
+
+sub delimiter {
+    print "----------------------\n";
+}
 
 sub main {
     # get all entries from the domain directory
@@ -53,6 +61,10 @@ sub main {
 
     if ($analyzeRcode) {
 	analyzeRcodes(\%super);
+	delimiter;
+    } elsif ($analyzeServfail) {
+	analyzeServfails(\%super);
+	delimiter;
     }
 
     print "Domains with data: ".scalar keys(%super)."\n";
@@ -101,7 +113,31 @@ sub analyzeRcodes {
     }
 }
 
+# analyze domain
+sub analyzeServfails {
+    my $bighash = shift;
+    my %result;
 
+    foreach my $domain (keys(%{$bighash})) {
+	if(findValue($bighash->{$domain},'A:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'MX:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'soa:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'nsec3param:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'dnskey:rcode') eq 'SERVFAIL') {
+	    foreach my $rrs (findValue($bighash->{$domain},'NS:list')) {
+		foreach my $ns (@$rrs) {
+		    $result{$ns->{'nsdname'}}++;
+		}
+	    }
+	}
+    }
+    my $i = 0;
+    foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
+	print "$key: $result{$key}\n";
+	$i++;
+	last if $i > $limit and $limit > 0;
+    }
+}
 __END__
 
 =head1 NAME
@@ -118,7 +154,9 @@ Required argument(s):
 
 Optional arguments:
 
+    --limit value            When generating lists, limit the length to this value
     --rcode                  Analyze RCODEs
+    --servfail               Toplist of name servers with SERVFAIL
     --lifetimes              Analyze RRSIG lifetimes
     --keyalgo                Analyze DNSKEY algorithms
     --iterations             Analyze NSEC3 iterations
