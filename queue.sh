@@ -3,7 +3,7 @@
 # queue handling vars
 NUM=0
 QUEUE=""
-MAXPROCS=40
+MAXPROCS=60
 
 # die function
 function die() {
