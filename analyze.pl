@@ -64,10 +64,12 @@ sub main {
     if ($analyzeRcode) {
 	analyzeRcodes(\%super);
 	delimiter;
-    } elsif ($analyzeServfail) {
+    }
+    if ($analyzeServfail) {
 	analyzeServfails(\%super);
 	delimiter;
-    } elsif ($analyzeWorkingNS) {
+    }
+    if ($analyzeWorkingNS) {
 	analyzeWorkingNS(\%super);
 	delimiter;
     }
