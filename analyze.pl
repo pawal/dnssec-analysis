@@ -15,6 +15,7 @@ use Pod::Usage;
 my $analyzeRcode;
 my $analyzeServfail;
 my $analyzeWorkingNS;
+my $analyzeSigLife;
 my $directory;
 my $limit = 0;
 
@@ -26,6 +27,7 @@ GetOptions(
     'rcode'         => \$analyzeRcode,
     'servfail'      => \$analyzeServfail,
     'working-ns'    => \$analyzeWorkingNS,
+    'siglife'       => \$analyzeSigLife,
     'verbose|v+'    => \$verbose,
     ) or pod2usage(2);
 
@@ -71,6 +73,10 @@ sub main {
     }
     if ($analyzeWorkingNS) {
 	analyzeWorkingNS(\%super);
+	delimiter;
+    }
+    if ($analyzeSigLife) {
+	analyzeSigLifeTimes(\%super);
 	delimiter;
     }
 
@@ -171,6 +177,16 @@ sub analyzeWorkingNS {
 	last if $i > $limit and $limit > 0;
     }
 }
+
+# discover the validity lifetimes of the signatures
+sub analyzeSigLifetimes {
+    my $bighash = shift;
+    my %result;
+
+    foreach my $domain (keys(%{$bighash})) {
+    }
+}
+
 __END__
 
 =head1 NAME
@@ -191,7 +207,7 @@ Optional arguments:
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --working-ns             Toplist of name servers not NO ERROR (perfect)
-    --lifetimes              Analyze RRSIG lifetimes
+    --siglife                Analyze RRSIG lifetimes
     --keyalgo                Analyze DNSKEY algorithms
     --iterations             Analyze NSEC3 iterations
 
