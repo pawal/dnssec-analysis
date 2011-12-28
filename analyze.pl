@@ -76,7 +76,7 @@ sub main {
 	delimiter;
     }
     if ($analyzeSigLife) {
-	analyzeSigLifeTimes(\%super);
+	analyzeSigLifetimes(\%super);
 	delimiter;
     }
 
@@ -183,7 +183,15 @@ sub analyzeSigLifetimes {
     my $bighash = shift;
     my %result;
 
+    my $i = 0; # temp limit
     foreach my $domain (keys(%{$bighash})) {
+	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
+	foreach my $rrsig (@$rrsigarray) {
+	    print $rrsig->{'typecovered'}.": ".$rrsig->{'sigexpiration'}."\n";
+#	    print Dumper($rrsig);
+	}
+	$i++;
+	last if $i > $limit and $limit > 0;
     }
 }
 
