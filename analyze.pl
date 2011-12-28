@@ -3,6 +3,7 @@
 use JSON;
 use Data::Dumper;
 use Encode qw< encode decode >;
+use Data::Serializer;
 use Getopt::Long;
 use Pod::Usage;
 
@@ -17,6 +18,7 @@ my $analyzeServfail;
 my $analyzeServfailList;
 my $analyzeWorkingNS;
 my $analyzeSigLife;
+my $recache = 0;
 my $directory;
 my $limit = 0;
 
@@ -25,6 +27,7 @@ GetOptions(
     'help|?'         => \$help,
     'directory|d=s'  => \$directory,
     'limit|l=i'      => \$limit,
+    'recache'        => \$recache,
     'rcode'          => \$analyzeRcode,
     'servfail'       => \$analyzeServfail,
     'servfaillist=s' => \$analyzeServfailList,
@@ -47,42 +50,75 @@ sub delimiter {
     print "----------------------\n";
 }
 
+# see if we have this data serialized already
+sub checkSerializer
+{
+    my $file = shift || die 'No file given to checkSerializer';
+
+    if (-e "$directory/$file") {
+	print "De-serializing data\n";
+	my $serialize = Data::Serializer->new();
+	my $obj = $serialize->retrieve("$directory/$file");
+	return $obj;
+    }
+    return undef;
+}
+
+# store serialized data, for cacheing purposes
+sub createSerialize
+{
+    my $obj = shift;
+    my $file = shift;  
+    my $serialize = Data::Serializer->new(serializer => 'JSON');
+    $serialize->store($obj,"$directory/$file");
+    print "Serialization done\n";
+}
+
 sub main {
     # get all entries from the domain directory
-    opendir DIR,"$directory/" or die "Cannot open directory: $!";
-    my @all = grep { -f "$directory/$_" } readdir(DIR);
-    closedir DIR;
 
-    my %super; # all json stuff in one giant hash
-    foreach my $file (@all) {
-	# if ((stat($filename))[7] == 0) { next; };
-	open FILE, "$directory/$file" or die "Cannot read file domain/$file: $!";
-	my @j = <FILE>;
-	next if not defined $j[0];
-	$j = getJSON($j[0]);
-	$super{$j->{'domain'}} = $j if defined $j;
+    #my %super; # all json stuff in one giant hash
+    my $alldata; # all json stuff in one giant hash
+    my $cachefile = 'serialize.txt';
 
-	close FILE;
+    $alldata = checkSerializer($cachefile);
+    if (not defined $alldata) {
+	print "Reading all json files...\n";
+	opendir DIR,"$directory/" or die "Cannot open directory: $!";
+	my @all = grep { -f "$directory/$_" } readdir(DIR);
+	closedir DIR;
+
+	foreach my $file (@all) {
+	    # if ((stat($filename))[7] == 0) { next; };
+	    open FILE, "$directory/$file" or die "Cannot read file domain/$file: $!";
+	    my @j = <FILE>;
+	    next if not defined $j[0];
+	    $j = getJSON($j[0]);
+	    $alldata->{$j->{'domain'}} = $j if defined $j;
+	    close FILE;
+	}
     }
+    createSerialize($alldata,'serialize.txt');
+    print "Running analysis\n";
 
     if ($analyzeRcode) {
-	analyzeRcodes(\%super);
+	analyzeRcodes($alldata);
 	delimiter;
     }
     if ($analyzeServfail) {
-	analyzeServfails(\%super);
+	analyzeServfails($alldata);
 	delimiter;
     }
     if ($analyzeServfailList) {
-	getServfailList(\%super,$analyzeServfailList);
+	getServfailList($alldata,$analyzeServfailList);
 	delimiter;
     }
     if ($analyzeWorkingNS) {
-	analyzeWorkingNS(\%super);
+	analyzeWorkingNS($alldata);
 	delimiter;
     }
     if ($analyzeSigLife) {
-	analyzeSigLifetimes(\%super);
+	analyzeSigLifetimes($alldata);
 	delimiter;
     }
 
@@ -243,6 +279,7 @@ Required argument(s):
 Optional arguments:
 
     --limit value            When generating lists, limit the length to this value
+    --recache                Recreate our serialized cache
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
