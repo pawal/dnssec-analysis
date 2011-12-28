@@ -14,6 +14,7 @@ use Pod::Usage;
 ### OPTIONS
 my $analyzeRcode;
 my $analyzeServfail;
+my $analyzeServfailList;
 my $analyzeWorkingNS;
 my $analyzeSigLife;
 my $directory;
@@ -21,14 +22,15 @@ my $limit = 0;
 
 # get command line options
 GetOptions(
-    'help|?'        => \$help,
-    'directory|d=s' => \$directory,
-    'limit|l=i'     => \$limit,
-    'rcode'         => \$analyzeRcode,
-    'servfail'      => \$analyzeServfail,
-    'working-ns'    => \$analyzeWorkingNS,
-    'siglife'       => \$analyzeSigLife,
-    'verbose|v+'    => \$verbose,
+    'help|?'         => \$help,
+    'directory|d=s'  => \$directory,
+    'limit|l=i'      => \$limit,
+    'rcode'          => \$analyzeRcode,
+    'servfail'       => \$analyzeServfail,
+    'servfaillist=s' => \$analyzeServfailList,
+    'working-ns'     => \$analyzeWorkingNS,
+    'siglife'        => \$analyzeSigLife,
+    'verbose|v+'     => \$verbose,
     ) or pod2usage(2);
 
 # help command line option
@@ -69,6 +71,10 @@ sub main {
     }
     if ($analyzeServfail) {
 	analyzeServfails(\%super);
+	delimiter;
+    }
+    if ($analyzeServfailList) {
+	getServfailList(\%super,$analyzeServfailList);
 	delimiter;
     }
     if ($analyzeWorkingNS) {
@@ -152,6 +158,31 @@ sub analyzeServfails {
     }
 }
 
+sub getServfailList {
+    my $bighash = shift;
+    my $nameserver = shift;
+    my @result;
+
+    foreach my $domain (keys(%{$bighash})) {
+	if(findValue($bighash->{$domain},'A:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'MX:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'soa:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'nsec3param:rcode') eq 'SERVFAIL' or
+	   findValue($bighash->{$domain},'dnskey:rcode') eq 'SERVFAIL') {
+	    foreach my $rrs (findValue($bighash->{$domain},'NS:list')) {
+		foreach my $ns (@$rrs) {
+		    if ($ns->{'nsdname'} eq $nameserver) {
+			push @result, $domain;
+		    }
+		}
+	    }
+	}
+    }
+    foreach my $domain (sort @result) {
+	print "SERVFAIL $nameserver: $domain\n";
+    }
+}
+
 # list of all NS with NOERROR
 sub analyzeWorkingNS {
     my $bighash = shift;
@@ -214,6 +245,7 @@ Optional arguments:
     --limit value            When generating lists, limit the length to this value
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
+    --servfaillist ns        Get all domains that SERVFAIL on this name server
     --working-ns             Toplist of name servers not NO ERROR (perfect)
     --siglife                Analyze RRSIG lifetimes
     --keyalgo                Analyze DNSKEY algorithms
