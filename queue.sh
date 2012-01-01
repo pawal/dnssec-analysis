@@ -3,7 +3,7 @@
 # queue handling vars
 NUM=0
 QUEUE=""
-MAXPROCS=60
+MAXPROCS=80
 
 # die function
 function die() {
@@ -13,7 +13,7 @@ function die() {
 
 # input
 function createoutdir {
-    DATE=`date +%Y-%m-%e`
+    DATE=`date +%Y-%m-%d`
     OUTDIR="${DATE}"
     mkdir $OUTDIR || die "mkdir failed with status $?"
 }
