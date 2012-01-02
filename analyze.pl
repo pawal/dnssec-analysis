@@ -1,11 +1,12 @@
 #!/usr/bin/perl
 
-use JSON;
-use Data::Dumper;
-use Encode qw< encode decode >;
-use Data::Serializer;
-use Getopt::Long;
-use Pod::Usage;
+use JSON;                        # for input and output of data files
+use Data::Dumper;                # debugging
+use Encode qw< encode decode >;  # UTF-8 stuff
+use Data::Serializer;            # for serializing data (needs work)
+use Getopt::Long;                # option handling
+use DateTime::Format::Strptime;  # converting RRSIG times
+use Pod::Usage;                  # documentation
 
 # GLOBALS
 
@@ -250,11 +251,22 @@ sub analyzeSigLifetimes {
     my $bighash = shift;
     my %result;
 
+    # convert RRSIG times to DateTime objects with $strp
+    my $strp = new DateTime::Format::Strptime(
+	pattern   => '%Y%m%d%H%M%S',
+	time_zone => 'UTC',
+	on_error  => 'croak');
+    my $now = DateTime->now;
+
     my $i = 0; # temp limit
     foreach my $domain (keys(%{$bighash})) {
 	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
 	foreach my $rrsig (@$rrsigarray) {
-	    print $rrsig->{'typecovered'}.": ".$rrsig->{'sigexpiration'}."\n";
+#	    print $rrsig->{'typecovered'}.": ".$rrsig->{'sigexpiration'}."\n";
+	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
+	    my $duration = $sigexp - $now;          # gives us a DateTime::Duration object
+	    print $duration->in_units('days')."\n"; # we have expiration times as days!
+	    
 #	    print Dumper($rrsig);
 	}
 	$i++;
@@ -279,16 +291,19 @@ Required argument(s):
 Optional arguments:
 
     --limit value            When generating lists, limit the length to this value
-    --recache                Recreate our serialized cache
+    --recache                Recreate our serialized cache (TODO)
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
-    --working-ns             Toplist of name servers not NO ERROR (perfect)
-    --siglife                Analyze RRSIG lifetimes
-    --keyalgo                Analyze DNSKEY algorithms
-    --iterations             Analyze NSEC3 iterations
+    --working-ns             Toplist of name servers not NO ERRORR on all queries
+    --siglife                Analyze RRSIG lifetimes (TODO)
+    --keyalgo                Analyze DNSKEY algorithms (TODO)
+    --iterations             Analyze NSEC3 iterations (TODO)
 
 =head1 TODO
+
+All of the analysis that we could do is not finished. For example key algorithms, NSEC3 iterations etc.
+Set a fake 'current' date for checking signatures.
 
 =head1 AUTHOR
 
