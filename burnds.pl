@@ -9,8 +9,6 @@ use JSON -support_by_pp;
 use Net::DNS;
 use Net::DNS::SEC;
 
-use Data::Dumper;
-
 # program params
 my $DEBUG  = 0; # set to true if you want some debug output
 my $pretty = 0; # set to true to output pretty JSON
