@@ -21,6 +21,7 @@ my $analyzeWorkingNS;
 my $analyzeSigLife;
 my $recache = 0;
 my $directory;
+my $fakedate;
 my $limit = 0;
 
 # get command line options
@@ -29,6 +30,7 @@ GetOptions(
     'directory|d=s'  => \$directory,
     'limit|l=i'      => \$limit,
     'recache'        => \$recache,
+    'fakedate=s'     => \$fakedate,
     'rcode'          => \$analyzeRcode,
     'servfail'       => \$analyzeServfail,
     'servfaillist=s' => \$analyzeServfailList,
@@ -119,7 +121,7 @@ sub main {
 	delimiter;
     }
     if ($analyzeSigLife) {
-	analyzeSigLifetimes($alldata);
+	analyzeSigLifetimes($alldata,$fakedate);
 	delimiter;
     }
 
@@ -246,17 +248,37 @@ sub analyzeWorkingNS {
     }
 }
 
+sub getFakeDate {
+    my $fakedate = shift;
+    print "fake: $fakedate\n";
+    my $strp = new DateTime::Format::Strptime(
+	pattern   => '%Y-%m-%d',
+	time_zone => 'UTC',
+	on_error  => 'croak');
+    if (defined $fakedate) {
+	my $ft = $strp->parse_datetime($fakedate);
+	return $ft;
+    }
+    return undef;
+}
+
 # discover the validity lifetimes of the signatures
 sub analyzeSigLifetimes {
     my $bighash = shift;
-    my %result;
+    my $fakedate = shift;
+    my $now;
+
+    my %exps;  # exceptions times in days
+    my %incps; # inception times in days
 
     # convert RRSIG times to DateTime objects with $strp
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y%m%d%H%M%S',
 	time_zone => 'UTC',
 	on_error  => 'croak');
-    my $now = DateTime->now;
+    $fakedate = getFakeDate($fakedate) if defined $fakedate;
+    $now = defined $fakedate ? $fakedate : DateTime->now;
+#    my $now = DateTime->now;
 
     my $i = 0; # temp limit
     foreach my $domain (keys(%{$bighash})) {
@@ -292,6 +314,7 @@ Optional arguments:
 
     --limit value            When generating lists, limit the length to this value
     --recache                Recreate our serialized cache (TODO)
+    --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons (TODO)
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
