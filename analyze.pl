@@ -250,7 +250,6 @@ sub analyzeWorkingNS {
 
 sub getFakeDate {
     my $fakedate = shift;
-    print "fake: $fakedate\n";
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y-%m-%d',
 	time_zone => 'UTC',
@@ -268,31 +267,47 @@ sub analyzeSigLifetimes {
     my $fakedate = shift;
     my $now;
 
-    my %exps;  # exceptions times in days
-    my %incps; # inception times in days
+    my %exps; # expiration times in days
+    my %incs; # inception times in days
+    my %life; # difference between expiration and inception in days
 
     # convert RRSIG times to DateTime objects with $strp
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y%m%d%H%M%S',
-	time_zone => 'UTC',
-	on_error  => 'croak');
+	time_zone => 'UTC');
+#	on_error  => 'croak');
     $fakedate = getFakeDate($fakedate) if defined $fakedate;
-    $now = defined $fakedate ? $fakedate : DateTime->now;
-#    my $now = DateTime->now;
+    $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
 
     my $i = 0; # temp limit
     foreach my $domain (keys(%{$bighash})) {
 	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
-	foreach my $rrsig (@$rrsigarray) {
-#	    print $rrsig->{'typecovered'}.": ".$rrsig->{'sigexpiration'}."\n";
+	my ($min,$max,$mintotal,$maxtotal) = (0,0,0,0); # per domain statistics
 	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
-	    my $duration = $sigexp - $now;          # gives us a DateTime::Duration object
-	    print $duration->in_units('days')."\n"; # we have expiration times as days!
-	    
-#	    print Dumper($rrsig);
+	    my $siginc = $strp->parse_datetime($rrsig->{'siginception'});
+	    my $inc = int $siginc->subtract_datetime_absolute($now)->delta_seconds / 86400;
+	    my $exp = int $sigexp->subtract_datetime_absolute($now)->delta_seconds / 86400;
+	    my $tot = int $sigexp->subtract_datetime_absolute($siginc)->delta_seconds / 86400;
+	    $incs{$inc}++; # build result hash with inception times
+	    $exps{$exp}++; # build result hash with expiration times
+	    $life{$tot}++; # build result hash with total lifetimes
 	}
 	$i++;
 	last if $i > $limit and $limit > 0;
+    }
+    print "Signature inception (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %incs) {
+	print "$days,".$incs{$days}."\n";
+    }
+    delimiter;
+    print "Signature expiration (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %exps) {
+	print "$days,".$exps{$days}."\n";
+    }
+    delimiter;
+    print "Total signature lifetimes (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %life) {
+	print "$days,".$life{$days}."\n";
     }
 }
 
