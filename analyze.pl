@@ -3,6 +3,7 @@
 use JSON;                        # for input and output of data files
 use Data::Dumper;                # debugging
 use Encode qw< encode decode >;  # UTF-8 stuff
+use List::Util qw[min max];      # for finding min and max values in lists
 use Data::Serializer;            # for serializing data (needs work)
 use Getopt::Long;                # option handling
 use DateTime::Format::Strptime;  # converting RRSIG times
@@ -271,6 +272,8 @@ sub analyzeSigLifetimes {
     my %incs; # inception times in days
     my %life; # difference between expiration and inception in days
 
+    my $res;  # new result hash
+
     # convert RRSIG times to DateTime objects with $strp
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y%m%d%H%M%S',
@@ -282,7 +285,8 @@ sub analyzeSigLifetimes {
     my $i = 0; # temp limit
     foreach my $domain (keys(%{$bighash})) {
 	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
-	my ($min,$max,$mintotal,$maxtotal) = (0,0,0,0); # per domain statistics
+	my (@inc,@exp,@tot);
+	my $sigcount = 0;
 	foreach my $rrsig (@$rrsigarray) {
 	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
 	    my $siginc = $strp->parse_datetime($rrsig->{'siginception'});
@@ -292,10 +296,25 @@ sub analyzeSigLifetimes {
 	    $incs{$inc}++; # build result hash with inception times
 	    $exps{$exp}++; # build result hash with expiration times
 	    $life{$tot}++; # build result hash with total lifetimes
+	    push @inc, $inc;
+	    push @exp, $exp;
+	    push @tot, $tot;
+	    $sigcount++;
 	}
+	next if $sigcount == 0;
+
+	# calc and store results
+	$res->{'incmin'}->{min @inc}++;
+	$res->{'incmax'}->{max @inc}++;
+	$res->{'expmin'}->{min @exp}++;
+	$res->{'expmax'}->{max @exp}++;
+
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
+
+
+
     print "Signature inception (days, count)\n";
     foreach my $days (sort {$a <=> $b} keys %incs) {
 	print "$days,".$incs{$days}."\n";
@@ -304,12 +323,12 @@ sub analyzeSigLifetimes {
     print "Signature expiration (days, count)\n";
     foreach my $days (sort {$a <=> $b} keys %exps) {
 	print "$days,".$exps{$days}."\n";
-}
+    }
     delimiter;
     print "Total signature lifetimes (days, count)\n";
     foreach my $days (sort {$a <=> $b} keys %life) {
 	print "$days,".$life{$days}."\n";
-}
+    }
 }
 
 __END__
