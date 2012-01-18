@@ -283,6 +283,7 @@ sub analyzeSigLifetimes {
     foreach my $domain (keys(%{$bighash})) {
 	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
 	my ($min,$max,$mintotal,$maxtotal) = (0,0,0,0); # per domain statistics
+	foreach my $rrsig (@$rrsigarray) {
 	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
 	    my $siginc = $strp->parse_datetime($rrsig->{'siginception'});
 	    my $inc = int $siginc->subtract_datetime_absolute($now)->delta_seconds / 86400;
@@ -303,12 +304,12 @@ sub analyzeSigLifetimes {
     print "Signature expiration (days, count)\n";
     foreach my $days (sort {$a <=> $b} keys %exps) {
 	print "$days,".$exps{$days}."\n";
-    }
+}
     delimiter;
     print "Total signature lifetimes (days, count)\n";
     foreach my $days (sort {$a <=> $b} keys %life) {
 	print "$days,".$life{$days}."\n";
-    }
+}
 }
 
 __END__
