@@ -3,7 +3,7 @@
 use JSON;                        # for input and output of data files
 use Data::Dumper;                # debugging
 use Encode qw< encode decode >;  # UTF-8 stuff
-use List::Util qw[min max];      # for finding min and max values in lists
+use List::Util qw[min max sum];  # for finding min and max values in lists
 use Data::Serializer;            # for serializing data (needs work)
 use Getopt::Long;                # option handling
 use DateTime::Format::Strptime;  # converting RRSIG times
@@ -262,6 +262,16 @@ sub getFakeDate {
     return undef;
 }
 
+sub extremeSigLifetimes {
+    sub $bighash = shift;
+    sub $fakedate = shift;
+    my $strp = new DateTime::Format::Strptime(
+	pattern   => '%Y%m%d%H%M%S',
+	time_zone => 'UTC');
+    $fakedate = getFakeDate($fakedate) if defined $fakedate;
+    my $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
+}
+
 # discover the validity lifetimes of the signatures
 sub analyzeSigLifetimes {
     my $bighash = shift;
@@ -278,7 +288,6 @@ sub analyzeSigLifetimes {
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y%m%d%H%M%S',
 	time_zone => 'UTC');
-#	on_error  => 'croak');
     $fakedate = getFakeDate($fakedate) if defined $fakedate;
     $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
 
@@ -306,28 +315,42 @@ sub analyzeSigLifetimes {
 	# calc and store results
 	$res->{'incmin'}->{min @inc}++;
 	$res->{'incmax'}->{max @inc}++;
+	$res->{'incavg'}->{sprintf('%.0f',(sum @inc)/$sigcount)}++;
 	$res->{'expmin'}->{min @exp}++;
 	$res->{'expmax'}->{max @exp}++;
+	$res->{'expavg'}->{sprintf('%.0f',(sum @exp)/$sigcount)}++;
 
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
 
-
-
-    print "Signature inception (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %incs) {
-	print "$days,".$incs{$days}."\n";
+    print "Signature average inception (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %{$res->{'incavg'}}) {
+	print "$days,".$res->{'incavg'}->{$days}."\n";
     }
     delimiter;
-    print "Signature expiration (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %exps) {
-	print "$days,".$exps{$days}."\n";
+    print "Signature lowest inception (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %{$res->{'incmin'}}) {
+	print "$days,".$res->{'incmin'}->{$days}."\n";
     }
     delimiter;
-    print "Total signature lifetimes (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %life) {
-	print "$days,".$life{$days}."\n";
+    print "Signature highest inception (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %{$res->{'incmax'}}) {
+	print "$days,".$res->{'incmax'}->{$days}."\n";
+    }
+    print "Signature average expiration (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %{$res->{'expavg'}}) {
+	print "$days,".$res->{'expavg'}->{$days}."\n";
+    }
+    delimiter;
+    print "Signature lowest expiration (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %{$res->{'expmin'}}) {
+	print "$days,".$res->{'expmin'}->{$days}."\n";
+    }
+    delimiter;
+    print "Signature highest expiration (days, count)\n";
+    foreach my $days (sort {$a <=> $b} keys %{$res->{'expmax'}}) {
+	print "$days,".$res->{'expmax'}->{$days}."\n";
     }
 }
 
