@@ -20,6 +20,7 @@ my $analyzeServfail;
 my $analyzeServfailList;
 my $analyzeWorkingNS;
 my $analyzeSigLife;
+my $analyzeExtremeSigs;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -37,6 +38,7 @@ GetOptions(
     'servfaillist=s' => \$analyzeServfailList,
     'working-ns'     => \$analyzeWorkingNS,
     'siglife'        => \$analyzeSigLife,
+    'extreme-sigs'   => \$analyzeExtremeSigs,
     'verbose|v+'     => \$verbose,
     ) or pod2usage(2);
 
@@ -123,6 +125,10 @@ sub main {
     }
     if ($analyzeSigLife) {
 	analyzeSigLifetimes($alldata,$fakedate);
+	delimiter;
+    }
+    if ($analyzeExtremeSigs) {
+	extremeSigLifetimes($alldata,$fakedate);
 	delimiter;
     }
 
@@ -262,14 +268,32 @@ sub getFakeDate {
     return undef;
 }
 
+# finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
 sub extremeSigLifetimes {
-    sub $bighash = shift;
-    sub $fakedate = shift;
+    my $bighash = shift;
+    my $fakedate = shift;
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y%m%d%H%M%S',
 	time_zone => 'UTC');
     $fakedate = getFakeDate($fakedate) if defined $fakedate;
     my $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
+    my @extremes;
+    foreach my $domain (keys(%{$bighash})) {
+	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
+	my (@inc,@exp,@tot);
+	foreach my $rrsig (@$rrsigarray) {
+	    next if $rrsig->{'typecovered'} eq 'DS'; # skip DS, not from child zone
+	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
+	    my $siginc = $strp->parse_datetime($rrsig->{'siginception'});
+	    my $inc = int $siginc->subtract_datetime_absolute($now)->delta_seconds / 86400;
+	    my $exp = int $sigexp->subtract_datetime_absolute($now)->delta_seconds / 86400;
+	    if ($inc < -100 or $exp > 100) {
+		push @extremes,$domain;
+		last;
+	    }
+	}
+    }
+    foreach (@extremes) { print "$_\n"; }
 }
 
 # discover the validity lifetimes of the signatures
@@ -297,6 +321,7 @@ sub analyzeSigLifetimes {
 	my (@inc,@exp,@tot);
 	my $sigcount = 0;
 	foreach my $rrsig (@$rrsigarray) {
+	    next if $rrsig->{'typecovered'} eq 'DS'; # skip DS, not from child zone
 	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
 	    my $siginc = $strp->parse_datetime($rrsig->{'siginception'});
 	    my $inc = int $siginc->subtract_datetime_absolute($now)->delta_seconds / 86400;
@@ -377,7 +402,8 @@ Optional arguments:
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
     --working-ns             Toplist of name servers not NO ERRORR on all queries
-    --siglife                Analyze RRSIG lifetimes (TODO)
+    --siglife                Analyze RRSIG lifetimes
+    --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
     --keyalgo                Analyze DNSKEY algorithms (TODO)
     --iterations             Analyze NSEC3 iterations (TODO)
 
