@@ -349,34 +349,30 @@ sub analyzeSigLifetimes {
 	last if $i > $limit and $limit > 0;
     }
 
+    # use closure to print all these hashes with results
+    my $loop = sub {
+	my $var = shift;
+	foreach my $days (sort {$a <=> $b} keys %{$res->{$var}}) {
+	    print "$days,".$res->{$var}->{$days}."\n";
+	}
+    };
+
     print "Signature average inception (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %{$res->{'incavg'}}) {
-	print "$days,".$res->{'incavg'}->{$days}."\n";
-    }
+    &$loop('incavg');
     delimiter;
     print "Signature lowest inception (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %{$res->{'incmin'}}) {
-	print "$days,".$res->{'incmin'}->{$days}."\n";
-    }
+    &$loop('incmin');
     delimiter;
     print "Signature highest inception (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %{$res->{'incmax'}}) {
-	print "$days,".$res->{'incmax'}->{$days}."\n";
-    }
+    &$loop('incmax');
     print "Signature average expiration (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %{$res->{'expavg'}}) {
-	print "$days,".$res->{'expavg'}->{$days}."\n";
-    }
+    &$loop('expavg');
     delimiter;
     print "Signature lowest expiration (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %{$res->{'expmin'}}) {
-	print "$days,".$res->{'expmin'}->{$days}."\n";
-    }
+    &$loop('expmin');
     delimiter;
     print "Signature highest expiration (days, count)\n";
-    foreach my $days (sort {$a <=> $b} keys %{$res->{'expmax'}}) {
-	print "$days,".$res->{'expmax'}->{$days}."\n";
-    }
+    &$loop('expmax');
 }
 
 __END__
