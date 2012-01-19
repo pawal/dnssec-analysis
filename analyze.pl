@@ -365,6 +365,7 @@ sub analyzeSigLifetimes {
     delimiter;
     print "Signature highest inception (days, count)\n";
     &$loop('incmax');
+    delimiter;
     print "Signature average expiration (days, count)\n";
     &$loop('expavg');
     delimiter;
