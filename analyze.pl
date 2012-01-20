@@ -255,6 +255,7 @@ sub analyzeWorkingNS {
     }
 }
 
+# create a fake date and return a DateTime-object (for date comparisons)
 sub getFakeDate {
     my $fakedate = shift;
     my $strp = new DateTime::Format::Strptime(
@@ -266,6 +267,18 @@ sub getFakeDate {
 	return $ft;
     }
     return undef;
+}
+
+# analyze DNSKEY, DS and RRSIG Algorithms
+sub analyzeAlgorithms {
+    my $bighash = shift;
+    my (%rrsig, %ds, %dnskey);
+
+    foreach my $domain (keys(%{$bighash})) {
+	my $dss     = findValue($bighash->{$domain},'ds');
+	my $rrsigs  = findValue($bighash->{$domain},'rrsig');
+	my $dnskeys = findValue($bighash->{$domain},'dnskey');
+    }
 }
 
 # finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
