@@ -9,29 +9,36 @@ use JSON -support_by_pp;
 use Net::DNS;
 use Net::DNS::SEC;
 
-# program params
+use Data::Dumper;
+
+# program parameters
+my $config = 'burnds.json';
 my $DEBUG  = 0; # set to true if you want some debug output
 my $pretty = 0; # set to true to output pretty JSON
 my $name;
 
-my $maxlines = 50000; # max number of lines to read for example...
-my $i = 0;   # line counter
-
 my $par = 0; # think of the parenthesis
 my $rr = ""; # global rr var
 
+# read configuration file for at least the resolver
+open CONFIG, "$config" or warn "Cannot read config file $config";
+my @CONFIG = <CONFIG>;
+close CONFIG;
+my $CONF = join '',@CONFIG;
+my $c = from_json($CONF);
+
 # global resolver
 my $res = Net::DNS::Resolver->new;
-$res->nameservers('212.247.18.10');
+$res->nameservers($c->{'resolver'});
 $res->recurse(1);
 $res->dnssec(1);
 $res->cdflag(0);
 $res->udppacketsize(4096);
 
-# parent server for all delegations (a.ns.se for .se domains)
+# parent server for all delegations (ie a.ns.se for .se domains)
 # (we could also use a non-validating recursive resolver)
 my $fnsse = Net::DNS::Resolver->new;
-$fnsse->nameservers('192.71.53.53');
+$fnsse->nameservers(@{$c->{'parents'}});
 $fnsse->recurse(0);
 $fnsse->dnssec(1);
 $fnsse->cdflag(0);
@@ -87,7 +94,6 @@ sub readDNS
 		};
 		print "RRSIG $name: ".$data->keytag."\n" if $DEBUG;
 	    }
-	    $i++;
 	}
     }
 
