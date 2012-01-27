@@ -9,8 +9,6 @@ use JSON -support_by_pp;
 use Net::DNS;
 use Net::DNS::SEC;
 
-use Data::Dumper;
-
 # program parameters
 my $config = 'burnds.json';
 my $DEBUG  = 0; # set to true if you want some debug output
