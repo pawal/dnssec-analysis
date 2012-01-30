@@ -21,6 +21,7 @@ my $analyzeServfailList;
 my $analyzeWorkingNS;
 my $analyzeSigLife;
 my $analyzeExtremeSigs;
+my $analyzeAlgorithms;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -39,6 +40,7 @@ GetOptions(
     'working-ns'     => \$analyzeWorkingNS,
     'siglife'        => \$analyzeSigLife,
     'extreme-sigs'   => \$analyzeExtremeSigs,
+    'algorithms'     => \$analyzeAlgorithms,
     'verbose|v+'     => \$verbose,
     ) or pod2usage(2);
 
@@ -129,6 +131,10 @@ sub main {
     }
     if ($analyzeExtremeSigs) {
 	extremeSigLifetimes($alldata,$fakedate);
+	delimiter;
+    }
+    if ($analyzeAlgorithms) {
+	analyzeAlgorithms($alldata);
 	delimiter;
     }
 
@@ -277,8 +283,14 @@ sub analyzeAlgorithms {
     foreach my $domain (keys(%{$bighash})) {
 	my $dss     = findValue($bighash->{$domain},'ds');
 	my $rrsigs  = findValue($bighash->{$domain},'rrsig');
-	my $dnskeys = findValue($bighash->{$domain},'dnskey');
+	my $dnskeys = findValue($bighash->{$domain},'dnskey:list');
+	map { $ds{$_->{'digtype'}}++ } @$dss;
+	map { $rrsig{$_->{'algorithm'}}++ } @$rrsigs;
+	map { $dnskey{$_->{'algorithm'}}++ } @$dnskeys;
     }
+    map { print "DS Digest type    $_: $ds{$_}\n"; }      keys %ds;
+    map { print "RRSIG Algorithms  $_: $rrsig{$_}\n"; }   keys %rrsig;
+    map { print "DNSKEY Algorithms $_: $dnskey{$_}\n"; }  keys %dnskey;
 }
 
 # finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
@@ -414,7 +426,7 @@ Optional arguments:
     --working-ns             Toplist of name servers not NO ERRORR on all queries
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
-    --keyalgo                Analyze DNSKEY algorithms (TODO)
+    --algorithms             Analyze DNSSEC algorithms (TODO)
     --iterations             Analyze NSEC3 iterations (TODO)
 
 =head1 TODO
