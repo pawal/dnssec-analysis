@@ -110,30 +110,37 @@ sub main {
     print "Running analysis\n";
 
     if ($analyzeRcode) {
+	print "Return codes:\n";
 	analyzeRcodes($alldata);
 	delimiter;
     }
     if ($analyzeServfail) {
+	print "Toplist of name servers with SERVFAIL:\n";
 	analyzeServfails($alldata);
 	delimiter;
     }
     if ($analyzeServfailList) {
+	print "List of SERVFAIL domains for $analyzeServfailList:\n";
 	getServfailList($alldata,$analyzeServfailList);
 	delimiter;
     }
     if ($analyzeWorkingNS) {
+	print "Toplist of name servers with NO ERROR on all queries\n";
 	analyzeWorkingNS($alldata);
 	delimiter;
     }
     if ($analyzeSigLife) {
+	print "Analysis of RRSIG lifetimes:\n";
 	analyzeSigLifetimes($alldata,$fakedate);
 	delimiter;
     }
     if ($analyzeExtremeSigs) {
+	print "List extreme RRSIG lifetimes (inception and expiration larger than 100 days):\n";
 	extremeSigLifetimes($alldata,$fakedate);
 	delimiter;
     }
     if ($analyzeAlgorithms) {
+	print "DNSSEC Algorithms:\n";
 	analyzeAlgorithms($alldata);
 	delimiter;
     }
@@ -278,19 +285,42 @@ sub getFakeDate {
 # analyze DNSKEY, DS and RRSIG Algorithms
 sub analyzeAlgorithms {
     my $bighash = shift;
-    my (%rrsig, %ds, %dnskey);
-
+    my (%rrsig, %ds, %dnskey, %ksk, %zsk);
+    my $i = 0;
+    # collect data (build result hashes)
     foreach my $domain (keys(%{$bighash})) {
+	next if $bighash->{$domain}->{'dnskey'}->{'rcode'} eq 'SERVFAIL';
 	my $dss     = findValue($bighash->{$domain},'ds');
 	my $rrsigs  = findValue($bighash->{$domain},'rrsig');
 	my $dnskeys = findValue($bighash->{$domain},'dnskey:list');
-	map { $ds{$_->{'digtype'}}++ } @$dss;
-	map { $rrsig{$_->{'algorithm'}}++ } @$rrsigs;
+	map { $ds{$_->{'digtype'}}++ }       @$dss;
+	map { $rrsig{$_->{'algorithm'}}++ }  @$rrsigs;
 	map { $dnskey{$_->{'algorithm'}}++ } @$dnskeys;
+	map { $ksk{$_->{'algorithm'}}++ } grep $_->{'is_sep'} == 1, @$dnskeys;
+	map { $zsk{$_->{'algorithm'}}++ } grep $_->{'is_sep'} == 0, @$dnskeys;
+	$i++;
     }
+    # collect totals
+    my $total = int grep $bighash{$_}->{'dnskey'}->{'rcode'} ne 'NOERROR', keys(%{$bighash});
+    my $dstotal     = 0; ($dstotal     += $_) for values %ds;
+    my $dnskeytotal = 0; ($dnskeytotal += $_) for values %dnskey;
+    my $ksktotal    = 0; ($ksktotal    += $_) for values %ksk;
+    my $zsktotal    = 0; ($zsktotal    += $_) for values %zsk;
+    # output summary
     map { print "DS Digest type    $_: $ds{$_}\n"; }      keys %ds;
     map { print "RRSIG Algorithms  $_: $rrsig{$_}\n"; }   keys %rrsig;
     map { print "DNSKEY Algorithms $_: $dnskey{$_}\n"; }  keys %dnskey;
+    map { print " (KSK) Algorithms $_: $ksk{$_}\n"; }     keys %ksk;
+    map { print " (ZSK) Algorithms $_: $zsk{$_}\n"; }     keys %zsk;
+    print "Total DS:     $dstotal\n";
+    print "Total KSK:    $ksktotal\n";
+    print "Total ZSK:    $zsktotal\n";
+    print "Total DNSKEY: $dnskeytotal\n";
+    print "DS per domain:     ".$dstotal / $i."\n";
+    print "KSK per domain:    ".$ksktotal / $i."\n";
+    print "ZSK per domain:    ".$zsktotal / $i."\n";
+    print "DNSKEY per domain: ".$dnskeytotal / $i."\n";
+    print "Algorithms based on total $i zones - the rest was SERVFAIL\n";
 }
 
 # finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
@@ -423,7 +453,7 @@ Optional arguments:
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
-    --working-ns             Toplist of name servers not NO ERRORR on all queries
+    --working-ns             Toplist of name servers not NO ERROR on all queries
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
     --algorithms             Analyze DNSSEC algorithms (TODO)
