@@ -138,7 +138,7 @@ sub main {
 	delimiter;
     }
 
-    print "Domains with data: ".scalar keys(%super)."\n";
+    print "Domains with data: ".scalar keys(%{$alldata})."\n";
 }
 
 # find values in a hash by adressing it like this "key:key2:key3"
