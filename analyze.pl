@@ -285,7 +285,7 @@ sub getFakeDate {
 # analyze DNSKEY, DS and RRSIG Algorithms
 sub analyzeAlgorithms {
     my $bighash = shift;
-    my (%rrsig, %ds, %dnskey, %ksk, %zsk);
+    my (%rrsig, %ds, %dnskey, %ksk, %zsk, %dnskeylen, %ksklen, %zsklen);
     my $i = 0;
     # collect data (build result hashes)
     foreach my $domain (keys(%{$bighash})) {
@@ -295,9 +295,17 @@ sub analyzeAlgorithms {
 	my $dnskeys = findValue($bighash->{$domain},'dnskey:list');
 	map { $ds{$_->{'digtype'}}++ }       @$dss;
 	map { $rrsig{$_->{'algorithm'}}++ }  @$rrsigs;
-	map { $dnskey{$_->{'algorithm'}}++ } @$dnskeys;
-	map { $ksk{$_->{'algorithm'}}++ } grep $_->{'is_sep'} == 1, @$dnskeys;
-	map { $zsk{$_->{'algorithm'}}++ } grep $_->{'is_sep'} == 0, @$dnskeys;
+	foreach my $key (@$dnskeys) {
+	    $dnskey{$key->{'algorithm'}}++;
+	    $dnskeylen{$key->{'keylength'}}++;
+	    if ($key->{'is_sep'}) {
+		$ksk{$key->{'algorithm'}}++;
+		$ksklen{$key->{'keylength'}}++;
+	    } else {
+		$zsk{$key->{'algorithm'}}++;
+		$zsklen{$key->{'keylength'}}++;
+	    }		
+	}
 	$i++;
     }
     # collect totals
@@ -307,11 +315,14 @@ sub analyzeAlgorithms {
     my $ksktotal    = 0; ($ksktotal    += $_) for values %ksk;
     my $zsktotal    = 0; ($zsktotal    += $_) for values %zsk;
     # output summary
-    map { print "DS Digest type    $_: $ds{$_}\n"; }      keys %ds;
-    map { print "RRSIG Algorithms  $_: $rrsig{$_}\n"; }   keys %rrsig;
-    map { print "DNSKEY Algorithms $_: $dnskey{$_}\n"; }  keys %dnskey;
-    map { print " (KSK) Algorithms $_: $ksk{$_}\n"; }     keys %ksk;
-    map { print " (ZSK) Algorithms $_: $zsk{$_}\n"; }     keys %zsk;
+    map { print "DS Digest type    $_: $ds{$_}\n"; }        sort {$a <=> $b} keys %ds;
+    map { print "RRSIG Algorithms  $_: $rrsig{$_}\n"; }     sort {$a <=> $b} keys %rrsig;
+    map { print "DNSKEY Algorithms $_: $dnskey{$_}\n"; }    sort {$a <=> $b} keys %dnskey;
+    map { print "DNSKEY Keylengths $_: $dnskeylen{$_}\n"; } sort {$a <=> $b} keys %dnskeylen;
+    map { print " (KSK) Algorithms $_: $ksk{$_}\n"; }       sort {$a <=> $b} keys %ksk;
+    map { print " (ZSK) Algorithms $_: $zsk{$_}\n"; }       sort {$a <=> $b} keys %zsk;
+    map { print " (KSK) Keylengths $_: $ksklen{$_}\n"; }    sort {$a <=> $b} keys %ksklen;
+    map { print " (ZSK) Keylengths $_: $zsklen{$_}\n"; }    sort {$a <=> $b} keys %zsklen;
     print "Total DS:     $dstotal\n";
     print "Total KSK:    $ksktotal\n";
     print "Total ZSK:    $zsktotal\n";
