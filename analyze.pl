@@ -22,6 +22,7 @@ my $analyzeWorkingNS;
 my $analyzeSigLife;
 my $analyzeExtremeSigs;
 my $analyzeAlgorithms;
+my $anaLyzeNSEC3;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -41,6 +42,7 @@ GetOptions(
     'siglife'        => \$analyzeSigLife,
     'extreme-sigs'   => \$analyzeExtremeSigs,
     'algorithms'     => \$analyzeAlgorithms,
+    'nsec3'          => \$analyzeNSEC3,
     'verbose|v+'     => \$verbose,
     ) or pod2usage(2);
 
@@ -142,6 +144,11 @@ sub main {
     if ($analyzeAlgorithms) {
 	print "DNSSEC Algorithms:\n";
 	analyzeAlgorithms($alldata);
+	delimiter;
+    }
+    if ($analyzeNSEC3) {
+	print "NSEC3 Analysis:\n";
+	analyzeNSEC3($alldata);
 	delimiter;
     }
 
@@ -334,6 +341,27 @@ sub analyzeAlgorithms {
     print "Algorithms based on total $i zones - the rest was SERVFAIL\n";
 }
 
+# analyze NSEC3 (salt, iterations)
+sub analyzeNSEC3 {
+    my $bighash = shift;
+    my (%saltlen, %iterations, %hashalgo);
+    my $i = 0;
+    # collect data (build result hashes)
+    foreach my $domain (keys(%{$bighash})) {
+	next if $bighash->{$domain}->{'dnskey'}->{'rcode'} eq 'SERVFAIL';
+	my $nsec3param = findValue($bighash->{$domain},'nsec3param');
+	next if not defined $nsec3param; # TODO: this line does not work...
+	$saltlen{length($nsec3param->{'salt'})}++;
+	$iterations{$nsec3param->{'iterations'}}++;
+	$hashalgo{$nsec3param->{'hashalgo'}}++;
+    }
+    # collect totals
+    # output summary
+    map { print "NSEC3 Salt length: $_: $saltlen{$_}\n"; } sort {$a <=> $b} keys %saltlen;
+    map { print "NSEC3 Iterations $_: $iterations{$_}\n"; } sort {$a <=> $b} keys %iterations;
+    map { print "NSEC3 Hash algorithm: $_: $hashalgo{$_}\n"; } sort {$a <=> $b} keys %hashalgo;
+}
+
 # finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
 sub extremeSigLifetimes {
     my $bighash = shift;
@@ -467,8 +495,8 @@ Optional arguments:
     --working-ns             Toplist of name servers not NO ERROR on all queries
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
-    --algorithms             Analyze DNSSEC algorithms (TODO)
-    --iterations             Analyze NSEC3 iterations (TODO)
+    --algorithms             Analyze DNSSEC algorithms and keylengths
+    --nsec3                  Analyze NSEC3 (salt, iterations)
 
 =head1 TODO
 
