@@ -32,11 +32,6 @@ use Getopt::Long;                # option handling
 use DateTime::Format::Strptime;  # converting RRSIG times
 use Pod::Usage;                  # documentation
 
-# GLOBALS
-
-### find zero byte files
-# find . -type f -size 0|wc -l
-
 ### OPTIONS
 my $analyzeRcode;
 my $analyzeServfail;
