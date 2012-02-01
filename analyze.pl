@@ -23,6 +23,7 @@ my $analyzeSigLife;
 my $analyzeExtremeSigs;
 my $analyzeAlgorithms;
 my $anaLyzeNSEC3;
+my $analyzeExpiration;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -41,6 +42,7 @@ GetOptions(
     'working-ns'     => \$analyzeWorkingNS,
     'siglife'        => \$analyzeSigLife,
     'extreme-sigs'   => \$analyzeExtremeSigs,
+    'expiration'     => \$analyzeExpiration,
     'algorithms'     => \$analyzeAlgorithms,
     'nsec3'          => \$analyzeNSEC3,
     'verbose|v+'     => \$verbose,
@@ -139,6 +141,11 @@ sub main {
     if ($analyzeExtremeSigs) {
 	print "List extreme RRSIG lifetimes (inception and expiration larger than 100 days):\n";
 	extremeSigLifetimes($alldata,$fakedate);
+	delimiter;
+    }
+    if ($analyzeExpiration) {
+	print "Correlate SOA expiration value with lowest RRSIG lifetime:\n";
+	extremeanalyzeExpiration($alldata,$fakedate);
 	delimiter;
     }
     if ($analyzeAlgorithms) {
@@ -476,6 +483,13 @@ sub analyzeSigLifetimes {
     &$loop('expmax');
 }
 
+# Correlate SOA expiration value with lowest RRSIG lifetime
+sub analyzeExpiration {
+    my $bighash = shift;
+    my $fakedate = shift;
+    my $now;
+}
+
 __END__
 
 =head1 NAME
@@ -501,6 +515,7 @@ Optional arguments:
     --working-ns             Toplist of name servers not NO ERROR on all queries
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
+    --expiration             Correlate SOA expiration value with lowest RRSIG lifetime
     --algorithms             Analyze DNSSEC algorithms and keylengths
     --nsec3                  Analyze NSEC3 (salt, iterations)
 
