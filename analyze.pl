@@ -144,8 +144,8 @@ sub main {
 	delimiter;
     }
     if ($analyzeExpiration) {
-	print "Correlate SOA expiration value with lowest RRSIG lifetime:\n";
-	extremeanalyzeExpiration($alldata,$fakedate);
+	print "Number of days that SOA expire is larger then lowest RRSIG (expire-rrsig, count):\n";
+	analyzeExpiration($alldata,$fakedate);
 	delimiter;
     }
     if ($analyzeAlgorithms) {
@@ -488,6 +488,44 @@ sub analyzeExpiration {
     my $bighash = shift;
     my $fakedate = shift;
     my $now;
+    my ($lower, $higher) = (0,0,0);
+
+    my %res; # result hash
+
+    # convert RRSIG times to DateTime objects with $strp
+    my $strp = new DateTime::Format::Strptime(
+	pattern   => '%Y%m%d%H%M%S',
+	time_zone => 'UTC');
+    $fakedate = getFakeDate($fakedate) if defined $fakedate;
+    $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
+
+    my $i = 0;
+    # collect data (build result hashes)
+    foreach my $domain (keys(%{$bighash})) {
+	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
+	my (@inc,@exp,@tot);
+	my $sigcount = 0;
+	foreach my $rrsig (@$rrsigarray) {
+	    next if $rrsig->{'typecovered'} eq 'DS'; # skip DS, not from child zone
+	    my $sigexp = $strp->parse_datetime($rrsig->{'sigexpiration'});
+	    my $exp = int $sigexp->subtract_datetime_absolute($now)->delta_seconds;
+	    push @exp, $exp;
+	}
+	next if int @exp == 0;
+	my $minexp = min @exp;
+	my $expire = findValue($bighash->{$domain},'soa:expire');
+	$higher++ if $expire > $minexp;
+	$lower++ if $expire < $minexp;
+
+	$res{sprintf('%.0f',($expire/86400)-($minexp/86400))}++;# if $expire >= $minexp;
+	$i++;
+	last if $i > $limit and $limit > 0;
+    }
+    # output summary
+    map { print "$_: $res{$_}\n"; } sort {$a <=> $b} keys %res;
+    print "Expire is higher (bad) than RRSIG lifetime: $higher\n";
+    print "Expire is lower (good) than RRSIG lifetime: $lower\n";
+    print "Epiration analysis based on total $i zones - the rest was SERVFAIL\n";
 }
 
 __END__
