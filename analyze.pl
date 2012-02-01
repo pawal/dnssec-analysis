@@ -352,7 +352,7 @@ sub analyzeNSEC3 {
 	next if $bighash->{$domain}->{'dnskey'}->{'rcode'} eq 'SERVFAIL';
 	$i++; # count working zones
 	my $nsec3param = findValue($bighash->{$domain},'nsec3param');
-	next if not defined $nsec3param->{'hashalgo'}; # TODO: this line does not work...
+	next if not defined $nsec3param->{'hashalgo'};
 	$nsec3tot++; # this is nsec3
 	$saltlen{length($nsec3param->{'salt'})}++;
 	$iterations{$nsec3param->{'iterations'}}++;
@@ -494,7 +494,7 @@ Optional arguments:
 
     --limit value            When generating lists, limit the length to this value
     --recache                Recreate our serialized cache (TODO)
-    --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons (TODO)
+    --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
@@ -506,8 +506,8 @@ Optional arguments:
 
 =head1 TODO
 
-All of the analysis that we could do is not finished. For example key algorithms, NSEC3 iterations etc.
-Set a fake 'current' date for checking signatures.
+Look at the JSON cache, add recache-dommand.
+Correlate SOA expire value with lowest RRSIG lifetime.
 
 =head1 AUTHOR
 
