@@ -313,7 +313,7 @@ sub analyzeAlgorithms {
 		$zsklen{$key->{'keylength'}}++;
 	    }		
 	}
-	$i++;
+	$i++; # count working zones
     }
     # collect totals
     my $total = int grep $bighash{$_}->{'dnskey'}->{'rcode'} ne 'NOERROR', keys(%{$bighash});
@@ -346,20 +346,26 @@ sub analyzeNSEC3 {
     my $bighash = shift;
     my (%saltlen, %iterations, %hashalgo);
     my $i = 0;
+    my $nsec3tot = 0;
     # collect data (build result hashes)
     foreach my $domain (keys(%{$bighash})) {
 	next if $bighash->{$domain}->{'dnskey'}->{'rcode'} eq 'SERVFAIL';
+	$i++; # count working zones
 	my $nsec3param = findValue($bighash->{$domain},'nsec3param');
-	next if not defined $nsec3param; # TODO: this line does not work...
+	next if not defined $nsec3param->{'hashalgo'}; # TODO: this line does not work...
+	$nsec3tot++; # this is nsec3
 	$saltlen{length($nsec3param->{'salt'})}++;
 	$iterations{$nsec3param->{'iterations'}}++;
 	$hashalgo{$nsec3param->{'hashalgo'}}++;
     }
     # collect totals
+    my $nsectot = $i - $nsec3tot;
     # output summary
-    map { print "NSEC3 Salt length: $_: $saltlen{$_}\n"; } sort {$a <=> $b} keys %saltlen;
+    map { print "NSEC3 Salt length $_: $saltlen{$_}\n"; } sort {$a <=> $b} keys %saltlen;
     map { print "NSEC3 Iterations $_: $iterations{$_}\n"; } sort {$a <=> $b} keys %iterations;
     map { print "NSEC3 Hash algorithm: $_: $hashalgo{$_}\n"; } sort {$a <=> $b} keys %hashalgo;
+    print "NSEC zones: $nsectot\n";
+    print "NSEC analysis based on total $i zones - the rest was SERVFAIL\n";
 }
 
 # finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
