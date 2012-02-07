@@ -238,58 +238,7 @@ sub readDNS
 	}
     }
 
-
     return $result;
-}
-
-# lets fetch all keys and params from the child zones
-sub fetchKeys
-{
-    my $dnsData = shift;
-    my @ds;
-    my @keys;
-    my @rrsig;
-
-    print " -=> Fetching stuff from DNS <=-\n" if $DEBUG;
-
-    foreach my $domain (keys %$dnsData)
-    {
-	next if not exists $dnsData->{$domain}->{'DS'};
-
-	# DNSKEY query
-	print "Quering DNSKEY for $domain\n" if $DEBUG;
-	my $answer = $res->query($domain,'DNSKEY');
-	if (defined $answer) {
-	    my $i = 0; # temp counter
-	    foreach my $data ($answer->answer)
-	    {
-		if ($data->type eq 'DNSKEY') {
-		    push @keys, $data;
-		    $dnsData->{$domain}->{'DNSKEY'}->{$i}->{'RR'} = $data;
-		    print "DNSKEY $domain: ".$data->keytag."\n" if $DEBUG;
-		}
-		if ($data->type eq 'RRSIG') {
-		    push @rrsig, $data;
-		    $dnsData->{$domain}->{'RRSIG'}->{$i}->{'RR'} = $data;
-		    print "RRSIG $domain: ".$data->keytag."\n" if $DEBUG;
-		}
-		$i++;
-	    }
-	}
-
-	# NSEC3PARAM query
-	print "Quering NSEC3PARAM for $domain\n" if $DEBUG;
-	$answer = $res->query($domain,'NSEC3PARAM');
-	if (defined $answer) {
-	    foreach my $data ($answer->answer)
-	    {
-		if ($data->type eq 'NSEC3PARAM') {
-		    print "NSEC3PARAM: ".$data->string."\n";
-		    $dnsData->{$domain}->{'NSEC3PARAM'} = $data;
-		}
-	    }
-	}
-    }
 }
 
 sub main() {
