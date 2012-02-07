@@ -26,6 +26,9 @@
 use warnings;
 use strict;
 
+use Thread;
+use Thread::Queue;
+
 use Pod::Usage;
 use Getopt::Long;
 use JSON -support_by_pp;
