@@ -1,4 +1,4 @@
 {
-  "resolver" : "212.247.18.10",
+  "resolver" : "127.0.0.1",
   "parents" : [ "a.ns.se", "b.ns.se", "c.ns.se", "d.ns.se", "e.ns.se" ]
 }
