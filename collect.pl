@@ -36,11 +36,10 @@ use Net::DNS;
 use Net::DNS::SEC;
 
 # program parameters
-my $config = 'burnds.json';
+my $config = 'collect.json';
 my $DEBUG  = 0; # set to true if you want some debug output
 my $pretty = 0; # set to true to output pretty JSON
 my $threads = 20; # default number of threads
-my $name;
 
 my $par = 0; # think of the parenthesis
 my $rr = ""; # global rr var
@@ -244,35 +243,52 @@ sub readDNS
 	}
     }
 
-
     return $result;
 }
 
+sub runQueue {
+    my $file = shift||die 'no file for runQueue()';
+    my $outdir = shift||die 'no outdir for runQueue()';
+}
+
 sub main() {
+    # non-global program parameters
     my $help = 0;
-    GetOptions('help|?'   => \$help,
-	       'name|n=s' => \$name,
-	       'debug'    => \$DEBUG,
-	       'pretty'   => \$pretty,)
+    my $outdir;
+    my $filename;
+    my $name;
+    GetOptions('help|?'     => \$help,
+	       'name|n=s'   => \$name,
+	       'file|f=s'   => \$filename,
+	       'outdir|d=s' => \$outdir,
+	       'threads'    => \$threads,
+	       'debug'      => \$DEBUG,
+	       'pretty'     => \$pretty,)
     or pod2usage(2);
     pod2usage(1) if($help);
-    pod2usage(1) if(not defined $name);
+    pod2usage(1) if(not defined $name and not defined $filename);
 
-    my $dnsData = readDNS($name);
-    print to_json($dnsData, { utf8 => 1, pretty => $pretty} );
+    if (defined $name) {
+	my $dnsData = readDNS($name);
+	print to_json($dnsData, { utf8 => 1, pretty => $pretty} );
+    } elsif (defined $filename) {
+	runQueue($filename,$outdir);
+    }
 }
 
 main;
 
 =head1 NAME
 
-burnds
+collect
 
 =head1 SYNOPSIS
 
-   burnds.pl -n domain
+   collect.pl -n domain
 
     -n domain       specify name
+    -f file.txt     read list of names from file
+    --threads       number of threads
     --debug         debug mode
     --pretty        print in pretty mode
 =head1 DESCRIPTION
