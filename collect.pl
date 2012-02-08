@@ -26,8 +26,10 @@
 use warnings;
 use strict;
 
+use Data::Dumper;
 use Thread;
 use Thread::Queue;
+use Term::ANSIColor;
 
 use Pod::Usage;
 use Getopt::Long;
@@ -35,14 +37,18 @@ use JSON -support_by_pp;
 use Net::DNS;
 use Net::DNS::SEC;
 
-# program parameters
+# global program parameters
 my $config = 'collect.json';
 my $DEBUG  = 0; # set to true if you want some debug output
 my $pretty = 0; # set to true to output pretty JSON
-my $threads = 20; # default number of threads
+my $threads = 80; # default number of threads
+my $outdir;
+my $filename;
 
 my $par = 0; # think of the parenthesis
 my $rr = ""; # global rr var
+
+my $queue = Thread::Queue->new();
 
 # read configuration file for at least the resolver
 open CONFIG, "$config" or warn "Cannot read config file $config";
@@ -80,9 +86,10 @@ sub readDNS
 
     my $result; # resulting JSON stuffz
     $result->{'domain'} = $name;
+    my $answer; # for DNS answers
 
     print "Quering DS for $name\n" if $DEBUG;
-    my $answer = $res->query($name,'DS');
+    $answer = $res->query($name,'DS');
     if (defined $answer) {
 	foreach my $data ($answer->answer)
 	{
@@ -246,16 +253,73 @@ sub readDNS
     return $result;
 }
 
+# find values in a hash by adressing it like this "key:key2:key3"
+sub findValue {
+    my $hash = shift;
+    my $find = shift;
+    my $value;
+    my $defined;
+    my @keys = split (':',$find);
+    @keys = map { "{'$_'}" } @keys;
+    my $evalHash = '$hash->'.join('->',@keys);
+    eval '$defined = defined '.$evalHash;
+    return undef if $@;
+    return undef if $defined eq '';
+    eval '$value = '.$evalHash;
+    return undef if $@;
+    return $value if defined $value;
+    return 1;
+}
+
+sub processDomain {
+    my $domain;
+    while ($domain = $queue->dequeue) {
+	chomp $domain;
+	return if not defined $domain or $domain eq '';
+	my $res = readDNS($domain);
+	print color 'reset';
+	if(findValue($res,'A:rcode') eq 'SERVFAIL' or
+	   findValue($res,'MX:rcode') eq 'SERVFAIL' or
+	   findValue($res,'soa:rcode') eq 'SERVFAIL' or
+	   findValue($res,'nsec3param:rcode') eq 'SERVFAIL' or
+	   findValue($res,'dnskey:rcode') eq 'SERVFAIL') {
+	   print"$domain: "; print color 'red'; print "SERVFAIL\n"; print color 'reset';
+	} else {
+	   print"$domain: "; print color 'green'; print "OK\n"; print color 'reset';
+	}
+	# output result
+	open(OUT, '>', "$outdir/$domain") or die $!;
+	print OUT to_json($res, { utf8 => 1 });
+	close(OUT);
+    }
+}
+
 sub runQueue {
-    my $file = shift||die 'no file for runQueue()';
-    my $outdir = shift||die 'no outdir for runQueue()';
+    die "cannot create directory $outdir: $!" if not mkdir $outdir;
+    die 'no file for runQueue()'              if not defined $filename;
+    die 'no outdir for runQueue()'            if not defined $outdir;
+
+    threads->create("processDomain") for (1 .. $threads);
+
+    open FILE, "$filename" or die "Cannot read file $filename: $!";
+    while ( <FILE> ) {
+	$queue->enqueue($_);
+    }
+    close FILE;
+
+    sleep(2); # sleep before checking thread count
+    while(threads->list(threads::running) != 0) {
+	sleep(1);
+	print color 'yellow'; 
+	print "Pending: ".$queue->pending()." - Running: ".threads->list(threads::running)."\n";
+	print color 'reset';
+    }
+
 }
 
 sub main() {
     # non-global program parameters
     my $help = 0;
-    my $outdir;
-    my $filename;
     my $name;
     GetOptions('help|?'     => \$help,
 	       'name|n=s'   => \$name,
@@ -291,6 +355,7 @@ collect
     --threads       number of threads
     --debug         debug mode
     --pretty        print in pretty mode
+
 =head1 DESCRIPTION
 
    gets DNSSEC data for domain (outputs JSON)
