@@ -89,8 +89,8 @@ sub readDNS
     my $answer; # for DNS answers
 
     print "Quering DS for $name\n" if $DEBUG;
-    $answer = $res->query($name,'DS');
-    if (defined $answer) {
+    while ($answer = $res->query($name,'DS')) {
+	next if not defined $answer;
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'DS') {
@@ -103,12 +103,13 @@ sub readDNS
 		print "DS $name: ".$data->digtype."\n" if $DEBUG;
 	    }
 	}
+	last;
     }
 
     print "Quering DNSKEY for $name\n" if $DEBUG;
-    $answer = $res->send($name,'DNSKEY');
-    $result->{'dnskey'}->{'rcode'} = $answer->header->rcode;
-    if (defined $answer) {
+    while ($answer = $res->send($name,'DNSKEY')) {
+	next if not defined $answer->header;
+	$result->{'dnskey'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'DNSKEY') {
@@ -128,12 +129,13 @@ sub readDNS
 		print "RRSIG $name: ".$data->keytag."\n" if $DEBUG;
 	    }
 	}
+	last;
     }
 
     print "Quering NSEC3PARAM for $name\n" if $DEBUG;
-    $answer = $res->send($name,'NSEC3PARAM');
-    $result->{'nsec3param'}->{'rcode'} = $answer->header->rcode;
-    if (defined $answer) {
+    while ($answer = $res->send($name,'NSEC3PARAM')) {
+	next if not defined $answer->header;
+	$result->{'nsec3param'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'NSEC3PARAM') {
@@ -152,12 +154,13 @@ sub readDNS
 		print "RRSIG $name: ".$data->keytag."\n" if $DEBUG;
 	    }
 	}
+	last;
     }
 
     print "Quering SOA for $name\n" if $DEBUG;
-    $answer = $res->send($name,'SOA');
-    $result->{'soa'}->{'rcode'} = $answer->header->rcode;
-    if (defined $answer) {
+    while ($answer = $res->send($name,'SOA')) {
+	next if not defined $answer->header;
+	$result->{'soa'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'SOA') {
@@ -179,12 +182,13 @@ sub readDNS
 		print "RRSIG $name: ".$data->keytag."\n" if $DEBUG;
 	    }
 	}
+	last;
     }
 
     print "Quering A for www.$name\n" if $DEBUG;
-    $answer = $res->send($name,'A');
-    $result->{'A'}->{'rcode'} = $answer->header->rcode;
-    if (defined $answer) {
+    while ($answer = $res->send($name,'A')) {
+	next if not defined $answer->header;
+	$result->{'A'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'A') {
@@ -202,12 +206,13 @@ sub readDNS
 		print "RRSIG www.$name: ".$data->keytag."\n" if $DEBUG;
 	    }
 	}
+	last;
     }
 
     print "Quering MX for $name\n" if $DEBUG;
-    $answer = $res->send($name,'MX');
-    $result->{'MX'}->{'rcode'} = $answer->header->rcode;
-    if (defined $answer) {
+    while ($answer = $res->send($name,'MX')) {
+	next if not defined $answer->header;
+	$result->{'MX'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'MX') {
@@ -226,12 +231,13 @@ sub readDNS
 		print "RRSIG www.$name: ".$data->keytag."\n" if $DEBUG;
 	    }
 	}
+	last;
     }
 
     print "Quering ns for www.$name\n" if $DEBUG;
-    $answer = $fnsse->send($name,'NS');
-    $result->{'NS'}->{'rcode'} = $answer->header->rcode;
-    if (defined $answer) {
+    while ($answer = $fnsse->send($name,'NS')) {
+	next if not defined $answer->header;
+	$result->{'NS'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->authority)
 	{
 	    if ($data->type eq 'NS') {
@@ -248,6 +254,7 @@ sub readDNS
 		};
 	    }
 	}
+	last;
     }
 
     return $result;
