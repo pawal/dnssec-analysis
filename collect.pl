@@ -39,6 +39,7 @@ use Net::DNS::SEC;
 my $config = 'burnds.json';
 my $DEBUG  = 0; # set to true if you want some debug output
 my $pretty = 0; # set to true to output pretty JSON
+my $threads = 20; # default number of threads
 my $name;
 
 my $par = 0; # think of the parenthesis
@@ -51,30 +52,32 @@ close CONFIG;
 my $CONF = join '',@CONFIG;
 my $c = from_json($CONF);
 
-# global resolver
-my $res = Net::DNS::Resolver->new;
-$res->nameservers($c->{'resolver'});
-$res->recurse(1);
-$res->dnssec(1);
-$res->cdflag(0);
-$res->udppacketsize(4096);
-
-# parent server for all delegations (ie a.ns.se for .se domains)
-# (we could also use a non-validating recursive resolver)
-my $fnsse = Net::DNS::Resolver->new;
-$fnsse->nameservers(@{$c->{'parents'}});
-$fnsse->recurse(0);
-$fnsse->dnssec(1);
-$fnsse->cdflag(0);
-$fnsse->udppacketsize(4096);
+# set up params from config file
+$threads = $c->{'threads'} if defined $c->{'threads'};
+my $local_resolver = $c->{'resolver'};
+my @parents = @{$c->{'parents'}};
 
 # read and parse the zonefile, building a hash with the data we want
 sub readDNS
 {
     my $name = shift;
-    # resolve name DS
-    # resolve name DNSKEY
-    # resolve name NSEC3PARAM
+
+    # global resolver
+    my $res = Net::DNS::Resolver->new;
+    $res->nameservers($c->{'resolver'});
+    $res->recurse(1);
+    $res->dnssec(1);
+    $res->cdflag(0);
+    $res->udppacketsize(4096);
+
+    # parent server for all delegations (ie a.ns.se for .se domains)
+    # (we could also use a non-validating recursive resolver)
+    my $fnsse = Net::DNS::Resolver->new;
+    $fnsse->nameservers(@parents);
+    $fnsse->recurse(0);
+    $fnsse->dnssec(1);
+    $fnsse->cdflag(0);
+    $fnsse->udppacketsize(4096);
 
     my $result; # resulting JSON stuffz
     $result->{'domain'} = $name;
@@ -243,56 +246,6 @@ sub readDNS
 
 
     return $result;
-}
-
-# lets fetch all keys and params from the child zones
-sub fetchKeys
-{
-    my $dnsData = shift;
-    my @ds;
-    my @keys;
-    my @rrsig;
-
-    print " -=> Fetching stuff from DNS <=-\n" if $DEBUG;
-
-    foreach my $domain (keys %$dnsData)
-    {
-	next if not exists $dnsData->{$domain}->{'DS'};
-
-	# DNSKEY query
-	print "Quering DNSKEY for $domain\n" if $DEBUG;
-	my $answer = $res->query($domain,'DNSKEY');
-	if (defined $answer) {
-	    my $i = 0; # temp counter
-	    foreach my $data ($answer->answer)
-	    {
-		if ($data->type eq 'DNSKEY') {
-		    push @keys, $data;
-		    $dnsData->{$domain}->{'DNSKEY'}->{$i}->{'RR'} = $data;
-		    print "DNSKEY $domain: ".$data->keytag."\n" if $DEBUG;
-		}
-		if ($data->type eq 'RRSIG') {
-		    push @rrsig, $data;
-		    $dnsData->{$domain}->{'RRSIG'}->{$i}->{'RR'} = $data;
-		    print "RRSIG $domain: ".$data->keytag."\n" if $DEBUG;
-		}
-		$i++;
-	    }
-	}
-
-	# NSEC3PARAM query
-	print "Quering NSEC3PARAM for $domain\n" if $DEBUG;
-	$answer = $res->query($domain,'NSEC3PARAM');
-	if (defined $answer) {
-	    foreach my $data ($answer->answer)
-	    {
-		if ($data->type eq 'NSEC3PARAM') {
-		    print "NSEC3PARAM: ".$data->string."\n";
-		    $dnsData->{$domain}->{'NSEC3PARAM'} = $data;
-		}
-	    }
-	}
-    }
 }
 
 sub main() {
