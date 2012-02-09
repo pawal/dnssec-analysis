@@ -1,7 +1,7 @@
 This is a number of tools to collect DNS data for DNSSEC analysis.
 
 burngetzone.pl cleans a (signed) zone and extracts all domains (lnames) with DS records  
-burnds.pl      collects all DNSSEC related data for later analysis (outputs JSON)  
+collect.pl     collects all DNSSEC related data for later analysis (outputs JSON)  
 
 analyze.pl     for analysis of the JSON files with DNS info  
 
@@ -21,4 +21,4 @@ analyze.pl -d directory --servfail  # toplist of name servers with SERVFAIL
 
 Or just get data from a domain:
 
-burnds.pl --pretty -n iis.se
+collect.pl --pretty -n iis.se
