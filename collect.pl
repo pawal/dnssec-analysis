@@ -76,8 +76,8 @@ sub readDNS
     $res->dnssec(1);
     $res->cdflag(0);
     $res->udppacketsize(4096);
-    $res->tcp_timeout(5);
-    $res->udp_timeout(5);
+    $res->tcp_timeout(10);
+    $res->udp_timeout(10);
 
     # parent server for all delegations (ie a.ns.se for .se domains)
     # (we could also use a non-validating recursive resolver)
@@ -98,7 +98,7 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count++;
-	last if $count > 3;
+	last if $count > 5;
 	$answer = $res->query($name,'DS');
 	next if not defined $answer;
 	foreach my $data ($answer->answer)
@@ -120,7 +120,7 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count++;
-	if ($count > 3) { $result->{'dnskey'}->{'rcode'} = 'TIMEOUT'; last; }
+	if ($count > 5) { $result->{'dnskey'}->{'rcode'} = 'TIMEOUT'; last; }
 	$answer = $res->send($name,'DNSKEY');
 	next if not defined $answer;
 	$result->{'dnskey'}->{'rcode'} = $answer->header->rcode;
@@ -151,7 +151,7 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count ++;
-	if ($count > 3) { $result->{'nsec3param'}->{'rcode'} = 'TIMEOUT'; last; }
+	if ($count > 5) { $result->{'nsec3param'}->{'rcode'} = 'TIMEOUT'; last; }
 	$answer = $res->send($name,'NSEC3PARAM');
 	next if not defined $answer;
 	$result->{'nsec3param'}->{'rcode'} = $answer->header->rcode;
@@ -180,7 +180,7 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count++;
-	if ($count > 3) { $result->{'soa'}->{'rcode'} = 'TIMEOUT'; last; }
+	if ($count > 5) { $result->{'soa'}->{'rcode'} = 'TIMEOUT'; last; }
 	$answer = $res->send($name,'SOA');
 	next if not defined $answer;
 	$result->{'soa'}->{'rcode'} = $answer->header->rcode;
@@ -212,7 +212,7 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count++;
-	if ($count > 3) { $result->{'A'}->{'rcode'} = 'TIMEOUT'; last; }
+	if ($count > 5) { $result->{'A'}->{'rcode'} = 'TIMEOUT'; last; }
 	$answer = $res->send($name,'A');
 	next if not defined $answer;
 	$result->{'A'}->{'rcode'} = $answer->header->rcode;
@@ -240,7 +240,7 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count++;
-	if ($count > 3) { $result->{'MX'}->{'rcode'} = 'TIMEOUT'; last; }
+	if ($count > 5) { $result->{'MX'}->{'rcode'} = 'TIMEOUT'; last; }
 	$answer = $res->send($name,'MX');
 	next if not defined $answer;
 	$result->{'MX'}->{'rcode'} = $answer->header->rcode;
@@ -269,9 +269,9 @@ sub readDNS
     $count = 0;
     while (1) {
 	$count++;
-	if ($count > 3) { $result->{'NS'}->{'rcode'} = 'TIMEOUT'; last; }
+	if ($count > 5) { $result->{'NS'}->{'rcode'} = 'TIMEOUT'; last; }
 	$answer = $fnsse->send($name,'NS');
-	next if not defined $answer->header->rcode;
+	next if not defined $answer;
 	$result->{'NS'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->authority)
 	{
