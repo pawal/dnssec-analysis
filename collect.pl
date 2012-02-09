@@ -62,10 +62,12 @@ $threads = $c->{'threads'} if defined $c->{'threads'};
 my $local_resolver = $c->{'resolver'};
 my @parents = @{$c->{'parents'}};
 
-# read and parse the zonefile, building a hash with the data we want
+# fetch all data we need for a domain name, returns with a hash
 sub readDNS
 {
     my $name = shift;
+
+    my $count; # retry counter
 
     # global resolver
     my $res = Net::DNS::Resolver->new;
@@ -74,6 +76,8 @@ sub readDNS
     $res->dnssec(1);
     $res->cdflag(0);
     $res->udppacketsize(4096);
+    $res->tcp_timeout(5);
+    $res->udp_timeout(5);
 
     # parent server for all delegations (ie a.ns.se for .se domains)
     # (we could also use a non-validating recursive resolver)
@@ -83,13 +87,19 @@ sub readDNS
     $fnsse->dnssec(1);
     $fnsse->cdflag(0);
     $fnsse->udppacketsize(4096);
+    $fnsse->tcp_timeout(5);
+    $fnsse->udp_timeout(5);
 
     my $result; # resulting JSON stuffz
     $result->{'domain'} = $name;
     my $answer; # for DNS answers
 
     print "Quering DS for $name\n" if $DEBUG;
-    while ($answer = $res->query($name,'DS')) {
+    $count = 0;
+    while (1) {
+	$count++;
+	last if $count > 3;
+	$answer = $res->query($name,'DS');
 	next if not defined $answer;
 	foreach my $data ($answer->answer)
 	{
@@ -107,9 +117,14 @@ sub readDNS
     }
 
     print "Quering DNSKEY for $name\n" if $DEBUG;
-    while ($answer = $res->send($name,'DNSKEY')) {
-	next if not defined $answer->header;
+    $count = 0;
+    while (1) {
+	$count++;
+	if ($count > 3) { $result->{'dnskey'}->{'rcode'} = 'TIMEOUT'; last; }
+	$answer = $res->send($name,'DNSKEY');
+	next if not defined $answer;
 	$result->{'dnskey'}->{'rcode'} = $answer->header->rcode;
+	if ($result->{'dnskey'}->{'rcode'} eq '') { print "FOO: $name\n"; next; }
 	foreach my $data ($answer->answer)
 	{
 	    if ($data->type eq 'DNSKEY') {
@@ -133,8 +148,12 @@ sub readDNS
     }
 
     print "Quering NSEC3PARAM for $name\n" if $DEBUG;
-    while ($answer = $res->send($name,'NSEC3PARAM')) {
-	next if not defined $answer->header;
+    $count = 0;
+    while (1) {
+	$count ++;
+	if ($count > 3) { $result->{'nsec3param'}->{'rcode'} = 'TIMEOUT'; last; }
+	$answer = $res->send($name,'NSEC3PARAM');
+	next if not defined $answer;
 	$result->{'nsec3param'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
@@ -158,8 +177,12 @@ sub readDNS
     }
 
     print "Quering SOA for $name\n" if $DEBUG;
-    while ($answer = $res->send($name,'SOA')) {
-	next if not defined $answer->header;
+    $count = 0;
+    while (1) {
+	$count++;
+	if ($count > 3) { $result->{'soa'}->{'rcode'} = 'TIMEOUT'; last; }
+	$answer = $res->send($name,'SOA');
+	next if not defined $answer;
 	$result->{'soa'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
@@ -186,8 +209,12 @@ sub readDNS
     }
 
     print "Quering A for www.$name\n" if $DEBUG;
-    while ($answer = $res->send($name,'A')) {
-	next if not defined $answer->header;
+    $count = 0;
+    while (1) {
+	$count++;
+	if ($count > 3) { $result->{'A'}->{'rcode'} = 'TIMEOUT'; last; }
+	$answer = $res->send($name,'A');
+	next if not defined $answer;
 	$result->{'A'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
@@ -210,8 +237,12 @@ sub readDNS
     }
 
     print "Quering MX for $name\n" if $DEBUG;
-    while ($answer = $res->send($name,'MX')) {
-	next if not defined $answer->header;
+    $count = 0;
+    while (1) {
+	$count++;
+	if ($count > 3) { $result->{'MX'}->{'rcode'} = 'TIMEOUT'; last; }
+	$answer = $res->send($name,'MX');
+	next if not defined $answer;
 	$result->{'MX'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->answer)
 	{
@@ -234,9 +265,13 @@ sub readDNS
 	last;
     }
 
-    print "Quering ns for www.$name\n" if $DEBUG;
-    while ($answer = $fnsse->send($name,'NS')) {
-	next if not defined $answer->header;
+    print "Quering ns for $name\n" if $DEBUG;
+    $count = 0;
+    while (1) {
+	$count++;
+	if ($count > 3) { $result->{'NS'}->{'rcode'} = 'TIMEOUT'; last; }
+	$answer = $fnsse->send($name,'NS');
+	next if not defined $answer->header->rcode;
 	$result->{'NS'}->{'rcode'} = $answer->header->rcode;
 	foreach my $data ($answer->authority)
 	{
@@ -257,6 +292,11 @@ sub readDNS
 	last;
     }
 
+    if($result->{'A'}->{'rcode'} eq 'SERVFAIL') { }
+    if($result->{'MX'}->{'rcode'} eq 'SERVFAIL') { }
+    if($result->{'soa'}->{'rcode'} eq 'SERVFAIL') { }
+    if($result->{'nsec3param'}->{'rcode'} eq 'SERVFAIL') { }
+    if($result->{'dnskey'}->{'rcode'} eq 'SERVFAIL') { }
     return $result;
 }
 
@@ -311,7 +351,7 @@ sub runQueue {
     }
     close FILE;
 
-    threads->create("processDomain") for (1 .. $threads);
+    threads->create({'stack_size' => 32*4096}, "processDomain") for (1 .. $threads);
 
     while(threads->list(threads::running) != 0) {
 	print color 'yellow'; 
