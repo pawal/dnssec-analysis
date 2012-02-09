@@ -279,10 +279,8 @@ sub findValue {
 }
 
 sub processDomain {
-    my $domain;
-    while ($domain = $queue->dequeue) {
+    while (defined(my $domain = $queue->dequeue_nb)) {
 	chomp $domain;
-	return if not defined $domain or $domain eq '';
 	my $res = readDNS($domain);
 	print color 'reset';
 	if(findValue($res,'A:rcode') eq 'SERVFAIL' or
@@ -299,6 +297,7 @@ sub processDomain {
 	print OUT to_json($res, { utf8 => 1 });
 	close(OUT);
     }
+    threads->exit();
 }
 
 sub runQueue {
@@ -306,20 +305,19 @@ sub runQueue {
     die 'no file for runQueue()'              if not defined $filename;
     die 'no outdir for runQueue()'            if not defined $outdir;
 
-    threads->create("processDomain") for (1 .. $threads);
-
     open FILE, "$filename" or die "Cannot read file $filename: $!";
     while ( <FILE> ) {
 	$queue->enqueue($_);
     }
     close FILE;
 
-    sleep(2); # sleep before checking thread count
+    threads->create("processDomain") for (1 .. $threads);
+
     while(threads->list(threads::running) != 0) {
-	sleep(1);
 	print color 'yellow'; 
 	print "Pending: ".$queue->pending()." - Running: ".threads->list(threads::running)."\n";
 	print color 'reset';
+	sleep(2);
     }
 
 }
@@ -359,6 +357,7 @@ collect
 
     -n domain       specify name
     -f file.txt     read list of names from file
+    -d outdir       create this directory and store result in if reading domains from file
     --threads       number of threads
     --debug         debug mode
     --pretty        print in pretty mode
