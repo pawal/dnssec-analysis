@@ -227,6 +227,7 @@ sub analyzeRcodes {
 sub analyzeServfails {
     my $bighash = shift;
     my %result;
+    my $count = 0;;
 
     foreach my $domain (keys(%{$bighash})) {
 	if(findValue($bighash->{$domain},'A:rcode') eq 'SERVFAIL' or
@@ -239,6 +240,7 @@ sub analyzeServfails {
 		    $result{$ns->{'nsdname'}}++;
 		}
 	    }
+	    $count++;
 	}
     }
     my $i = 0;
@@ -247,6 +249,7 @@ sub analyzeServfails {
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
+    print "Total number of domains with any SERVFAIL: $count\n";
 }
 
 sub getServfailList {
