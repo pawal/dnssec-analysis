@@ -391,7 +391,7 @@ sub analyzeNSEC3 {
     # output summary
     map { print "NSEC3 Salt length $_: $saltlen{$_}\n"; } sort {$a <=> $b} keys %saltlen;
     map { print "NSEC3 Iterations $_: $iterations{$_}\n"; } sort {$a <=> $b} keys %iterations;
-    map { print "NSEC3 Hash algorithm: $_: $hashalgo{$_}\n"; } sort {$a <=> $b} keys %hashalgo;
+    map { print "NSEC3 Hash algorithm $_: $hashalgo{$_}\n"; } sort {$a <=> $b} keys %hashalgo;
     print "NSEC zones: $nsectot\n";
     print "NSEC analysis based on total $i zones - the rest was SERVFAIL\n";
 }
