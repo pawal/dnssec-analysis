@@ -62,33 +62,34 @@ $threads = $c->{'threads'} if defined $c->{'threads'};
 my $local_resolver = $c->{'resolver'};
 my @parents = @{$c->{'parents'}};
 
+# global resolver
+my $res = Net::DNS::Resolver->new;
+$res->nameservers($c->{'resolver'});
+$res->recurse(1);
+$res->dnssec(1);
+$res->cdflag(0);
+$res->udppacketsize(4096);
+$res->tcp_timeout(10);
+$res->udp_timeout(10);
+
+# parent server for all delegations (ie a.ns.se for .se domains)
+# (we could also use a non-validating recursive resolver)
+my $fnsse = Net::DNS::Resolver->new;
+$fnsse->nameservers(@parents);
+$fnsse->recurse(0);
+$fnsse->dnssec(1);
+$fnsse->cdflag(0);
+$fnsse->udppacketsize(4096);
+$fnsse->tcp_timeout(5);
+$fnsse->udp_timeout(5);
+
+
 # fetch all data we need for a domain name, returns with a hash
 sub readDNS
 {
     my $name = shift;
 
     my $count; # retry counter
-
-    # global resolver
-    my $res = Net::DNS::Resolver->new;
-    $res->nameservers($c->{'resolver'});
-    $res->recurse(1);
-    $res->dnssec(1);
-    $res->cdflag(0);
-    $res->udppacketsize(4096);
-    $res->tcp_timeout(10);
-    $res->udp_timeout(10);
-
-    # parent server for all delegations (ie a.ns.se for .se domains)
-    # (we could also use a non-validating recursive resolver)
-    my $fnsse = Net::DNS::Resolver->new;
-    $fnsse->nameservers(@parents);
-    $fnsse->recurse(0);
-    $fnsse->dnssec(1);
-    $fnsse->cdflag(0);
-    $fnsse->udppacketsize(4096);
-    $fnsse->tcp_timeout(5);
-    $fnsse->udp_timeout(5);
 
     my $result; # resulting JSON stuffz
     $result->{'domain'} = $name;
