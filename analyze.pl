@@ -42,6 +42,7 @@ my $analyzeExtremeSigs;
 my $analyzeAlgorithms;
 my $anaLyzeNSEC3;
 my $analyzeExpiration;
+my $analyzeDSDuplicates;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -57,6 +58,7 @@ GetOptions(
     'rcode'          => \$analyzeRcode,
     'servfail'       => \$analyzeServfail,
     'servfaillist=s' => \$analyzeServfailList,
+    'dsduplicates'   => \$analyzeDSDuplicates,
     'working-ns'     => \$analyzeWorkingNS,
     'siglife'        => \$analyzeSigLife,
     'extreme-sigs'   => \$analyzeExtremeSigs,
@@ -144,6 +146,11 @@ sub main {
     if ($analyzeServfailList) {
 	print "List of SERVFAIL domains for $analyzeServfailList:\n";
 	getServfailList($alldata,$analyzeServfailList);
+	delimiter;
+    }
+    if ($analyzeDSDuplicates) {
+	print "Number of domains that has the same DS records:\n";
+	analyzeDSDuplicates($alldata);
 	delimiter;
     }
     if ($analyzeWorkingNS) {
@@ -274,6 +281,28 @@ sub getServfailList {
     }
     foreach my $domain (sort @result) {
 	print "SERVFAIL $nameserver: $domain\n";
+    }
+}
+
+# find all DS duplicates among domains and output
+sub analyzeDSDuplicates {
+    my $bighash = shift;
+    my $nameserver = shift;
+    my %result;
+
+    require Data::Dumper;
+    foreach my $domain (keys(%{$bighash})) {
+	my $dss = $bighash->{$domain}->{'ds'};
+	foreach my $ds (@$dss) {
+	    $result{$ds->{'digest'}}++;
+	}
+    }
+
+    my $i = 0;
+    foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
+	print "$key: $result{$key}\n";
+	$i++;
+	last if $i > $limit and $limit > 0;
     }
 }
 
@@ -571,6 +600,7 @@ Optional arguments:
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
+    --dsduplicates           Toplist of the number of domains that has the same DS record
     --working-ns             Toplist of name servers not NO ERROR on all queries
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
