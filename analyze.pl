@@ -75,7 +75,6 @@ if ($help or not defined $directory) {
 }
 
 main();
-#pod2usage(-exitstatus => 0);
 exit;
 
 sub delimiter {
@@ -290,7 +289,6 @@ sub analyzeDSDuplicates {
     my $nameserver = shift;
     my %result;
 
-    require Data::Dumper;
     foreach my $domain (keys(%{$bighash})) {
 	my $dss = $bighash->{$domain}->{'ds'};
 	foreach my $ds (@$dss) {
@@ -358,7 +356,7 @@ sub analyzeAlgorithms {
 	my $rrsigs  = findValue($bighash->{$domain},'rrsig');
 	my $dnskeys = findValue($bighash->{$domain},'dnskey:list');
 	map { $ds{$_->{'digtype'}}++ }       @$dss;
-	map { $rrsig{$_->{'algorithm'}}++ }  @$rrsigs;
+	map { $rrsig{$_->{'algorithm'}}++ } grep ($_->{'typecovered'} ne 'DS', @$rrsigs);
 	foreach my $key (@$dnskeys) {
 	    $dnskey{$key->{'algorithm'}}++;
 	    $dnskeylen{$key->{'keylength'}}++;
