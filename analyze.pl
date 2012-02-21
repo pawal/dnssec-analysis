@@ -217,6 +217,7 @@ sub analyzeRcodes {
     my $bighash = shift;
     my %result;
 
+    # collect data
     foreach my $domain (keys(%{$bighash})) {
 	$result{'A:'.findValue($bighash->{$domain},          'A:rcode')}++;
 	$result{'MX:'.findValue($bighash->{$domain},         'MX:rcode')}++;
@@ -224,6 +225,8 @@ sub analyzeRcodes {
 	$result{'NSEC3PARAM:'.findValue($bighash->{$domain}, 'nsec3param:rcode')}++;
 	$result{'DNSKEY:'.findValue($bighash->{$domain},     'dnskey:rcode')}++;
     }
+
+    # output summary
     foreach my $key (sort keys(%result)) {
 	print "$key: $result{$key}\n";
     }
@@ -235,6 +238,7 @@ sub analyzeServfails {
     my %result;
     my $count = 0;;
 
+    # collect data
     foreach my $domain (keys(%{$bighash})) {
 	if(findValue($bighash->{$domain},'A:rcode') eq 'SERVFAIL' or
 	   findValue($bighash->{$domain},'MX:rcode') eq 'SERVFAIL' or
@@ -249,6 +253,8 @@ sub analyzeServfails {
 	    $count++;
 	}
     }
+
+    # output summary
     my $i = 0;
     foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
 	print "$key: $result{$key}\n";
@@ -263,6 +269,7 @@ sub getServfailList {
     my $nameserver = shift;
     my @result;
 
+    # collect data
     foreach my $domain (keys(%{$bighash})) {
 	if(findValue($bighash->{$domain},'A:rcode') eq 'SERVFAIL' or
 	   findValue($bighash->{$domain},'MX:rcode') eq 'SERVFAIL' or
@@ -278,6 +285,8 @@ sub getServfailList {
 	    }
 	}
     }
+
+    # output list of domains
     foreach my $domain (sort @result) {
 	print "SERVFAIL $nameserver: $domain\n";
     }
@@ -289,6 +298,7 @@ sub analyzeDSDuplicates {
     my $nameserver = shift;
     my %result;
 
+    # collect data
     foreach my $domain (keys(%{$bighash})) {
 	my $dss = $bighash->{$domain}->{'ds'};
 	foreach my $ds (@$dss) {
@@ -296,6 +306,7 @@ sub analyzeDSDuplicates {
 	}
     }
 
+    # output summary
     my $i = 0;
     foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
 	print "$key: $result{$key}\n";
@@ -309,6 +320,7 @@ sub analyzeWorkingNS {
     my $bighash = shift;
     my %result;
 
+    # collect data
     foreach my $domain (keys(%{$bighash})) {
 	if(findValue($bighash->{$domain},'A:rcode') eq 'NOERROR' and
 	   findValue($bighash->{$domain},'MX:rcode') eq 'NOERROR' and
@@ -322,6 +334,8 @@ sub analyzeWorkingNS {
 	    }
 	}
     }
+
+    # output summary
     my $i = 0;
     foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
 	print "$key: $result{$key}\n";
@@ -349,14 +363,19 @@ sub analyzeAlgorithms {
     my $bighash = shift;
     my (%rrsig, %ds, %dnskey, %ksk, %zsk, %dnskeylen, %ksklen, %zsklen);
     my $i = 0;
+
     # collect data (build result hashes)
     foreach my $domain (keys(%{$bighash})) {
 	next if $bighash->{$domain}->{'dnskey'}->{'rcode'} eq 'SERVFAIL';
 	my $dss     = findValue($bighash->{$domain},'ds');
 	my $rrsigs  = findValue($bighash->{$domain},'rrsig');
 	my $dnskeys = findValue($bighash->{$domain},'dnskey:list');
+
+	# DS records
 	map { $ds{$_->{'digtype'}}++ }       @$dss;
+	# RRSIG algorithms, skip DS since not from child zone
 	map { $rrsig{$_->{'algorithm'}}++ } grep ($_->{'typecovered'} ne 'DS', @$rrsigs);
+	# DNSKEY keylengths and algorithms
 	foreach my $key (@$dnskeys) {
 	    $dnskey{$key->{'algorithm'}}++;
 	    $dnskeylen{$key->{'keylength'}}++;
@@ -370,12 +389,14 @@ sub analyzeAlgorithms {
 	}
 	$i++; # count working zones
     }
+
     # collect totals
     my $total = int grep $bighash{$_}->{'dnskey'}->{'rcode'} ne 'NOERROR', keys(%{$bighash});
     my $dstotal     = 0; ($dstotal     += $_) for values %ds;
     my $dnskeytotal = 0; ($dnskeytotal += $_) for values %dnskey;
     my $ksktotal    = 0; ($ksktotal    += $_) for values %ksk;
     my $zsktotal    = 0; ($zsktotal    += $_) for values %zsk;
+
     # output summary
     map { print "DS Digest type    $_: $ds{$_}\n"; }        sort {$a <=> $b} keys %ds;
     map { print "RRSIG Algorithms  $_: $rrsig{$_}\n"; }     sort {$a <=> $b} keys %rrsig;
@@ -402,6 +423,7 @@ sub analyzeNSEC3 {
     my (%saltlen, %iterations, %hashalgo);
     my $i = 0;
     my $nsec3tot = 0;
+
     # collect data (build result hashes)
     foreach my $domain (keys(%{$bighash})) {
 	next if $bighash->{$domain}->{'dnskey'}->{'rcode'} eq 'SERVFAIL';
@@ -413,8 +435,10 @@ sub analyzeNSEC3 {
 	$iterations{$nsec3param->{'iterations'}}++;
 	$hashalgo{$nsec3param->{'hashalgo'}}++;
     }
+
     # collect totals
     my $nsectot = $i - $nsec3tot;
+
     # output summary
     map { print "NSEC3 Salt length $_: $saltlen{$_}\n"; } sort {$a <=> $b} keys %saltlen;
     map { print "NSEC3 Iterations $_: $iterations{$_}\n"; } sort {$a <=> $b} keys %iterations;
@@ -426,6 +450,7 @@ sub analyzeNSEC3 {
 # finds extreme lifetimes where extreme is hardcoded to 100 days diff from expiration or inception
 sub extremeSigLifetimes {
     my $bighash = shift;
+
     my $fakedate = shift;
     my $strp = new DateTime::Format::Strptime(
 	pattern   => '%Y%m%d%H%M%S',
@@ -433,6 +458,8 @@ sub extremeSigLifetimes {
     $fakedate = getFakeDate($fakedate) if defined $fakedate;
     my $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
     my @extremes;
+
+    # collect data
     foreach my $domain (keys(%{$bighash})) {
 	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
 	my (@inc,@exp,@tot);
@@ -448,6 +475,8 @@ sub extremeSigLifetimes {
 	    }
 	}
     }
+
+    # output summary
     foreach (@extremes) { print "$_\n"; }
 }
 
@@ -470,6 +499,7 @@ sub analyzeSigLifetimes {
     $fakedate = getFakeDate($fakedate) if defined $fakedate;
     $now = defined $fakedate ? $fakedate : DateTime->now; # now is possibly another date
 
+    # collect data
     my $i = 0; # temp limit
     foreach my $domain (keys(%{$bighash})) {
 	my $rrsigarray = findValue($bighash->{$domain},'rrsig');
@@ -503,6 +533,8 @@ sub analyzeSigLifetimes {
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
+
+    # output data
 
     # use closure to print all these hashes with results
     my $loop = sub {
