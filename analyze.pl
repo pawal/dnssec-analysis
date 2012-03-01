@@ -571,6 +571,8 @@ sub analyzeExpiration {
     my ($lower, $higher) = (0,0,0);
 
     my %res; # result hash
+    my %soaexpire; # results for the SOA expire
+    my $notdefined = 0;
 
     # convert RRSIG times to DateTime objects with $strp
     my $strp = new DateTime::Format::Strptime(
@@ -594,10 +596,12 @@ sub analyzeExpiration {
 	next if int @exp == 0;
 	my $minexp = min @exp;
 	my $expire = findValue($bighash->{$domain},'soa:expire');
+	$soaexpire{sprintf('%.0f',$expire/86400)}++;
 	$higher++ if $expire > $minexp;
 	$lower++ if $expire < $minexp;
 
-	$res{sprintf('%.0f',($expire/86400)-($minexp/86400))}++;# if $expire >= $minexp;
+	$res{sprintf('%.0f',($expire/86400)-($minexp/86400))}++ if defined $expire;# if $expire >= $minexp;
+	$notdefined++ if not defined $expire;
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
@@ -605,7 +609,11 @@ sub analyzeExpiration {
     map { print "$_: $res{$_}\n"; } sort {$a <=> $b} keys %res;
     print "Expire is higher (bad) than RRSIG lifetime: $higher\n";
     print "Expire is lower (good) than RRSIG lifetime: $lower\n";
+    print "(SOA Expire was missing for $notdefined zones...)\n";
     print "Epiration analysis based on total $i zones - the rest was SERVFAIL\n";
+    delimiter;
+    print "Summary of SOA expire values\n";
+    map { print "$_: $soaexpire{$_}\n"; } sort {$a <=> $b} keys %soaexpire;
 }
 
 __END__
