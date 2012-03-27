@@ -43,6 +43,7 @@ my $analyzeAlgorithms;
 my $anaLyzeNSEC3;
 my $analyzeExpiration;
 my $analyzeDSDuplicates;
+my $analyzeKeyDuplicates;
 my $analyzeKeytags;
 my $analyzeKeytagList;
 my $recache = 0;
@@ -61,6 +62,7 @@ GetOptions(
     'servfail'       => \$analyzeServfail,
     'servfaillist=s' => \$analyzeServfailList,
     'dsduplicates'   => \$analyzeDSDuplicates,
+    'keyduplicates'  => \$analyzeKeyDuplicates,
     'working-ns'     => \$analyzeWorkingNS,
     'siglife'        => \$analyzeSigLife,
     'extreme-sigs'   => \$analyzeExtremeSigs,
@@ -152,8 +154,13 @@ sub main {
 	delimiter;
     }
     if ($analyzeDSDuplicates) {
-	print "Number of domains that has the same DS records:\n";
+	print "Number of domains that share the same DS records:\n";
 	analyzeDSDuplicates($alldata);
+	delimiter;
+    }
+    if ($analyzeKeyDuplicates) {
+	print "Number of domains that share the same DNSKEY records:\n";
+	analyzeKeyDuplicates($alldata);
 	delimiter;
     }
     if ($analyzeWorkingNS) {
@@ -630,8 +637,8 @@ sub analyzeExpiration {
     map { print "$_: $soaexpire{$_}\n"; } sort {$a <=> $b} keys %soaexpire;
 }
 
-# Analyze DNSKEY keytags
-sub analyzeKeytags {
+# Analyze DNSKEY keys (shared keys)
+sub analyzeKeyDuplicates {
     my $bighash = shift;
     my %result;
 
@@ -647,7 +654,30 @@ sub analyzeKeytags {
     # output summary
     my $i = 0;
     foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
-        print "$key: $result{$key}\n";
+        print "DNSKEY".($i+1).": $result{$key}\n";
+        $i++;
+        last if $i > $limit and $limit > 0;
+    }
+}
+
+# Analyze DNSKEY keytags
+sub analyzeKeytags {
+    my $bighash = shift;
+    my %result;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+        next if $bighash->{$domain}->{'dnskey'}->{'rcode'} ne 'NOERROR';
+        my $list = findValue($bighash->{$domain},'dnskey:list');
+        foreach my $key (@$list) {
+            $result{$key->{'keytag'}}++ if $key->{'is_sep'};
+        }
+    }
+
+    # output summary
+    my $i = 0;
+    foreach my $keytag (sort { $result{$b} <=> $result{$a} } keys %result) {
+        print "$keytag: $result{$keytag}\n";
         $i++;
         last if $i > $limit and $limit > 0;
     }
@@ -666,7 +696,7 @@ sub getKeytagList {
         foreach my $key (@$list) {
             if ($key->{'keytag'} eq $keytag)
             {
-                print "$domain\n";
+                print "$domain\n" unless $count > $limit and $limit > 0;
                 $count++;
                 last;
             }
@@ -698,6 +728,7 @@ Optional arguments:
     --servfail               Toplist of name servers with SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
     --dsduplicates           Toplist of the number of domains that has the same DS record
+    --keyduplicates          Toplist of the number of domains that has the same DNSKEY
     --working-ns             Toplist of name servers not NO ERROR on all queries
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
