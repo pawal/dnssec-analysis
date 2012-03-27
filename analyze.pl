@@ -43,6 +43,8 @@ my $analyzeAlgorithms;
 my $anaLyzeNSEC3;
 my $analyzeExpiration;
 my $analyzeDSDuplicates;
+my $analyzeKeytags;
+my $analyzeKeytagList;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -65,6 +67,8 @@ GetOptions(
     'expiration'     => \$analyzeExpiration,
     'algorithms'     => \$analyzeAlgorithms,
     'nsec3'          => \$analyzeNSEC3,
+    'keytags'        => \$analyzeKeytags,
+    'keytaglist=i'   => \$analyzeKeytagList,
     'verbose|v+'     => \$verbose,
     ) or pod2usage(2);
 
@@ -181,6 +185,16 @@ sub main {
 	print "NSEC3 Analysis:\n";
 	analyzeNSEC3($alldata);
 	delimiter;
+    }
+    if ($analyzeKeytags) {
+        print "DNSSEC Keytags:\n";
+        analyzeKeytags($alldata);
+	delimiter;
+    }
+    if ($analyzeKeytagList) {
+        print "Zones with keytag $analyzeKeytagList:\n";
+	getKeytagList($alldata,$analyzeKeytagList);
+        delimiter;
     }
 
     print "Domains with data: ".scalar keys(%{$alldata})."\n";
@@ -616,6 +630,51 @@ sub analyzeExpiration {
     map { print "$_: $soaexpire{$_}\n"; } sort {$a <=> $b} keys %soaexpire;
 }
 
+# Analyze DNSKEY keytags
+sub analyzeKeytags {
+    my $bighash = shift;
+    my %result;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+        next if $bighash->{$domain}->{'dnskey'}->{'rcode'} ne 'NOERROR';
+        my $list = findValue($bighash->{$domain},'dnskey:list');
+        foreach my $key (@$list) {
+            $result{$key->{'key'}}++ if $key->{'is_sep'};
+        }
+    }
+
+    # output summary
+    my $i = 0;
+    foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
+        print "$key: $result{$key}\n";
+        $i++;
+        last if $i > $limit and $limit > 0;
+    }
+}
+
+# List all domains with a specific keytag
+sub getKeytagList {
+    my $bighash = shift;
+    my $keytag = shift;
+    my $count = 0;
+
+    # list zones with specified keytag
+    foreach my $domain (keys(%{$bighash})) {
+        next if $bighash->{$domain}->{'dnskey'}->{'rcode'} ne 'NOERROR';
+        my $list = findValue($bighash->{$domain},'dnskey:list');
+        foreach my $key (@$list) {
+            if ($key->{'keytag'} eq $keytag)
+            {
+                print "$domain\n";
+                $count++;
+                last;
+            }
+        }
+    }
+    print "Total number of domains with keytag $keytag: $count\n";
+}
+
 __END__
 
 =head1 NAME
@@ -645,6 +704,8 @@ Optional arguments:
     --expiration             Correlate SOA expiration value with lowest RRSIG lifetime
     --algorithms             Analyze DNSSEC algorithms and keylengths
     --nsec3                  Analyze NSEC3 (salt, iterations)
+    --keytags                Analyze distribution of DNSKEY keytags
+    --keytaglist n           List zones which contain the specified keytag
 
 =head1 TODO
 
