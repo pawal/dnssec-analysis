@@ -133,6 +133,8 @@ sub readDNS
 		    'algorithm' => $data->algorithm,
 		    'keylength' => $data->keylength,
 		    'is_sep'    => $data->is_sep,
+                    'keytag'    => $data->keytag,
+                    'key'       => $data->key,
 		};
 		print "DNSKEY $name: ".$data->key."\n" if $DEBUG;
 	    } elsif ($data->type eq 'RRSIG') {
