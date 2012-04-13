@@ -37,6 +37,7 @@ my $analyzeRcode;
 my $analyzeServfail;
 my $analyzeServfailList;
 my $analyzeWorkingNS;
+my $analyzeAllNS;
 my $analyzeSigLife;
 my $analyzeExtremeSigs;
 my $analyzeAlgorithms;
@@ -64,6 +65,7 @@ GetOptions(
     'dsduplicates'   => \$analyzeDSDuplicates,
     'keyduplicates'  => \$analyzeKeyDuplicates,
     'working-ns'     => \$analyzeWorkingNS,
+    'all-ns'         => \$analyzeAllNS,
     'siglife'        => \$analyzeSigLife,
     'extreme-sigs'   => \$analyzeExtremeSigs,
     'expiration'     => \$analyzeExpiration,
@@ -166,6 +168,11 @@ sub main {
     if ($analyzeWorkingNS) {
 	print "Toplist of name servers with NO ERROR on all queries\n";
 	analyzeWorkingNS($alldata);
+	delimiter;
+    }
+    if ($analyzeAllNS) {
+	print "List all name servers in descending order # of associated zones\n";
+	listAllNS($alldata);
 	delimiter;
     }
     if ($analyzeSigLife) {
@@ -363,6 +370,31 @@ sub analyzeWorkingNS {
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
+}
+
+# list of all NS
+sub listAllNS {
+    my $bighash = shift;
+    my %result;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+	foreach my $rrs (findValue($bighash->{$domain},'NS:list')) {
+	    foreach my $ns (@$rrs) {
+		$result{$ns->{'nsdname'}}++;
+	    }
+	}
+    }
+
+    # output summary
+    my $i = 0;
+    foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
+	print "$key: $result{$key}\n";
+	$i++;
+	last if $i > $limit and $limit > 0;
+    }
+    my $nons = scalar keys %result;
+    print "Total number of NS: $nons\n";
 }
 
 # create a fake date and return a DateTime-object (for date comparisons)
@@ -730,6 +762,7 @@ Optional arguments:
     --dsduplicates           Toplist of the number of domains that has the same DS record
     --keyduplicates          Toplist of the number of domains that has the same DNSKEY
     --working-ns             Toplist of name servers not NO ERROR on all queries
+    --all-ns                 List all name servers in descending order # of associated zones
     --siglife                Analyze RRSIG lifetimes
     --extreme-sigs           List extreme RRSIG lifetimes (inception and expiration larger than 100 days)
     --expiration             Correlate SOA expiration value with lowest RRSIG lifetime
