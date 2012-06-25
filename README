@@ -3,7 +3,6 @@ This is a number of tools to collect DNS data for DNSSEC analysis.
 cleanzone.pl   cleans a (signed) zone and extracts all domains (lnames) with DS records  
 collect.pl     collects all DNSSEC related data for later analysis (outputs JSON)  
 analyze.pl     for analysis of the JSON files with DNS info  
-queue.sh       for running burnds.pl with many threads  
 
 ----
 
@@ -12,7 +11,7 @@ Example usage, batch for a lot of domains:
 # create a list from a signed zone file
 cleanzone.pl -f zonefile > domainlist.txt
 # run 
-queue.sh domainlist.txt
+collect.pl -f domainlist.txt -d directory
 # do some analysis
 analyze.pl -d directory --rcode     # analyze return codes
 analyze.pl -d directory --servfail  # toplist of name servers with SERVFAIL
