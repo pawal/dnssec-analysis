@@ -35,6 +35,7 @@ use Pod::Usage;                  # documentation
 ### OPTIONS
 my $analyzeRcode;
 my $analyzeServfail;
+my $ListServfails;
 my $analyzeServfailList;
 my $analyzeWorkingNS;
 my $analyzeAllNS;
@@ -61,6 +62,7 @@ GetOptions(
     'fakedate=s'     => \$fakedate,
     'rcode'          => \$analyzeRcode,
     'servfail'       => \$analyzeServfail,
+    'servfails'       =>\$ListServfails,
     'servfaillist=s' => \$analyzeServfailList,
     'dsduplicates'   => \$analyzeDSDuplicates,
     'keyduplicates'  => \$analyzeKeyDuplicates,
@@ -148,6 +150,11 @@ sub main {
     if ($analyzeServfail) {
 	print "Toplist of name servers with SERVFAIL:\n";
 	analyzeServfails($alldata);
+	delimiter;
+    }
+    if ($ListServfails) {
+	print "List of all domains that is all SERVFAIL:\n";
+	ListServfails($alldata);
 	delimiter;
     }
     if ($analyzeServfailList) {
@@ -290,6 +297,32 @@ sub analyzeServfails {
 	last if $i > $limit and $limit > 0;
     }
     print "Total number of domains with any SERVFAIL: $count\n";
+}
+
+# list of domains that is all servfail
+sub ListServfails {
+    my $bighash = shift;
+    my @result;
+    my $count = 0;;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+	if(findValue($bighash->{$domain},'A:rcode') eq 'SERVFAIL' and
+	   findValue($bighash->{$domain},'MX:rcode') eq 'SERVFAIL' and
+	   findValue($bighash->{$domain},'soa:rcode') eq 'SERVFAIL' and
+	   findValue($bighash->{$domain},'nsec3param:rcode') eq 'SERVFAIL' and
+	   findValue($bighash->{$domain},'dnskey:rcode') and 'SERVFAIL') {
+	    push @result, $domain;
+	    $count++;
+	}
+    }
+
+    # output summary
+    my $i = 0;
+    foreach (@result) {
+	print "$_\n";
+    }
+    print "Total number of domains with all SERVFAIL: $count\n";
 }
 
 sub getServfailList {
@@ -758,6 +791,7 @@ Optional arguments:
     --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons
     --rcode                  Analyze RCODEs
     --servfail               Toplist of name servers with SERVFAIL
+    --servfails              List all domains with all SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
     --dsduplicates           Toplist of the number of domains that has the same DS record
     --keyduplicates          Toplist of the number of domains that has the same DNSKEY
