@@ -44,6 +44,7 @@ my $analyzeExtremeSigs;
 my $analyzeAlgorithms;
 my $anaLyzeNSEC3;
 my $analyzeExpiration;
+my $countDS;
 my $analyzeDSDuplicates;
 my $analyzeKeyDuplicates;
 my $analyzeKeytags;
@@ -62,8 +63,9 @@ GetOptions(
     'fakedate=s'     => \$fakedate,
     'rcode'          => \$analyzeRcode,
     'servfail'       => \$analyzeServfail,
-    'servfails'       =>\$ListServfails,
+    'servfails'      => \$ListServfails,
     'servfaillist=s' => \$analyzeServfailList,
+    'countds'        => \$countDS,
     'dsduplicates'   => \$analyzeDSDuplicates,
     'keyduplicates'  => \$analyzeKeyDuplicates,
     'working-ns'     => \$analyzeWorkingNS,
@@ -160,6 +162,11 @@ sub main {
     if ($analyzeServfailList) {
 	print "List of SERVFAIL domains for $analyzeServfailList:\n";
 	getServfailList($alldata,$analyzeServfailList);
+	delimiter;
+    }
+    if ($countDS) {
+	print "Count the number of domains with DS records:\n";
+	countDS($alldata);
 	delimiter;
     }
     if ($analyzeDSDuplicates) {
@@ -350,6 +357,29 @@ sub getServfailList {
     # output list of domains
     foreach my $domain (sort @result) {
 	print "SERVFAIL $nameserver: $domain\n";
+    }
+}
+
+# count the number of DS records (also per domain)
+sub countDS {
+    my $bighash = shift;
+    my $nameserver = shift;
+    my %result;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+	my $dss = $bighash->{$domain}->{'ds'};
+	foreach my $ds (@$dss) {
+	    $result{$domain}++;
+	}
+    }
+
+    # output summary
+    my $i = 0;
+    foreach my $key (sort { $result{$b} <=> $result{$a} } keys %result) {
+	print "$key: $result{$key}\n";
+	$i++;
+	last if $i > $limit and $limit > 0;
     }
 }
 
