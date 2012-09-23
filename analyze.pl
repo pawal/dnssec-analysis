@@ -49,6 +49,7 @@ my $analyzeDSDuplicates;
 my $analyzeKeyDuplicates;
 my $analyzeKeytags;
 my $analyzeKeytagList;
+my $analyzeStrangeness;
 my $recache = 0;
 my $directory;
 my $fakedate;
@@ -77,6 +78,7 @@ GetOptions(
     'nsec3'          => \$analyzeNSEC3,
     'keytags'        => \$analyzeKeytags,
     'keytaglist=i'   => \$analyzeKeytagList,
+    'strangeness'    => \$analyzeStrangeness,
     'verbose|v+'     => \$verbose,
     ) or pod2usage(2);
 
@@ -223,6 +225,11 @@ sub main {
         print "Zones with keytag $analyzeKeytagList:\n";
 	getKeytagList($alldata,$analyzeKeytagList);
         delimiter;
+    }
+    if ($analyzeStrangeness) {
+        print "Listing zones with differing status codes...:\n";
+        analyzeStrangeness($alldata);
+	delimiter;
     }
 
     print "Domains with data: ".scalar keys(%{$alldata})."\n";
@@ -381,6 +388,7 @@ sub countDS {
 	$i++;
 	last if $i > $limit and $limit > 0;
     }
+    print "Total number of domains with DS: $i\n";
 }
 
 # find all DS duplicates among domains and output
@@ -800,6 +808,32 @@ sub getKeytagList {
     print "Total number of domains with keytag $keytag: $count\n";
 }
 
+# list of total servfails
+sub analyzeStrangeness {
+    my $bighash = shift;
+    my @result;
+    my $count = 0;;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+	my $a          = findValue($bighash->{$domain},'A:rcode');
+	my $dnskey     = findValue($bighash->{$domain},'dnskey:rcode');
+	my $mx         = findValue($bighash->{$domain},'MX:rcode');
+	my $nsec3param = findValue($bighash->{$domain},'nsec3param:rcode');
+	my $soa        = findValue($bighash->{$domain},'soa:rcode');
+	if ($a ne $soa) {
+	    push @result, $domain;
+	    $count++;
+	}
+    }
+
+    # output summary
+    foreach my $domain (sort @result) {
+	print "$domain\n";
+    }
+    print "Total number of domains with strangeness: $count\n";
+}
+
 __END__
 
 =head1 NAME
@@ -820,6 +854,7 @@ Optional arguments:
     --recache                Recreate our serialized cache (TODO)
     --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons
     --rcode                  Analyze RCODEs
+    --countds                Count DS records (per domain and in total)
     --servfail               Toplist of name servers with SERVFAIL
     --servfails              List all domains with all SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
@@ -834,6 +869,7 @@ Optional arguments:
     --nsec3                  Analyze NSEC3 (salt, iterations)
     --keytags                Analyze distribution of DNSKEY keytags
     --keytaglist n           List zones which contain the specified keytag
+    --strangeness            The Strangeness Factor
 
 =head1 TODO
 
