@@ -321,11 +321,11 @@ sub processDomain {
 	chomp $domain;
 	my $res = readDNS($domain);
 	print color 'reset';
-	if(findValue($res,'A:rcode') eq 'SERVFAIL' or
-	   findValue($res,'MX:rcode') eq 'SERVFAIL' or
-	   findValue($res,'soa:rcode') eq 'SERVFAIL' or
+	if(findValue($res,'A:rcode')          eq 'SERVFAIL' or
+	   findValue($res,'MX:rcode')         eq 'SERVFAIL' or
+	   findValue($res,'soa:rcode')        eq 'SERVFAIL' or
 	   findValue($res,'nsec3param:rcode') eq 'SERVFAIL' or
-	   findValue($res,'dnskey:rcode') eq 'SERVFAIL') {
+	   findValue($res,'dnskey:rcode')     eq 'SERVFAIL') {
 	   print"$domain: "; print color 'red'; print "SERVFAIL\n"; print color 'reset';
 	} else {
 	   print"$domain: "; print color 'green'; print "OK\n"; print color 'reset';
