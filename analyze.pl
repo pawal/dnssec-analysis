@@ -36,6 +36,7 @@ use Pod::Usage;                  # documentation
 my $analyzeRcode;
 my $analyzeServfail;
 my $ListServfails;
+my $ListWorking;
 my $analyzeServfailList;
 my $analyzeWorkingNS;
 my $analyzeAllNS;
@@ -54,6 +55,7 @@ my $recache = 0;
 my $directory;
 my $fakedate;
 my $limit = 0;
+my $verbose = 0;
 
 # get command line options
 GetOptions(
@@ -65,6 +67,7 @@ GetOptions(
     'rcode'          => \$analyzeRcode,
     'servfail'       => \$analyzeServfail,
     'servfails'      => \$ListServfails,
+    'listworking'    => \$ListWorking,
     'servfaillist=s' => \$analyzeServfailList,
     'countds'        => \$countDS,
     'dsduplicates'   => \$analyzeDSDuplicates,
@@ -159,6 +162,11 @@ sub main {
     if ($ListServfails) {
 	print "List of all domains that is all SERVFAIL:\n";
 	ListServfails($alldata);
+	delimiter;
+    }
+    if ($ListWorking) {
+	print "List of all domains that is all \"working\":\n";
+	ListWorking($alldata);
 	delimiter;
     }
     if ($analyzeServfailList) {
@@ -337,6 +345,39 @@ sub ListServfails {
 	print "$_\n";
     }
     print "Total number of domains with all SERVFAIL: $count\n";
+}
+
+sub ListWorking {
+    my $bighash = shift;
+    my @result;
+    my @fails;
+    my $count_pass = 0;
+    my $count_fail = 0;
+
+    # collect data
+    foreach my $domain (keys(%{$bighash})) {
+        if(findValue($bighash->{$domain},'A:rcode') eq 'NOERROR' or
+           findValue($bighash->{$domain},'MX:rcode') eq 'NOERROR' or
+           findValue($bighash->{$domain},'soa:rcode') eq 'NOERROR') {
+            push @result, $domain;
+            $count_pass++;
+        } else {
+            push @fails, $domain;
+            $count_fail++;
+        }
+    }
+
+    # output list of servfail domains, if verbose
+    if ($verbose) {
+	print "Domains that are not working (SERVFAIL):\n";
+	map { print "$_\n" } @fails;
+    }
+
+    # output summary
+    print "Total number of domains with (at least) one of the following working ".
+	  "(on A, MX and SOA): $count_pass\n";
+    print "Total number of domains with NONE of the following working ".
+	  "(on A, MX and SOA): $count_fail\n";
 }
 
 sub getServfailList {
@@ -850,11 +891,13 @@ Required argument(s):
 
 Optional arguments:
 
+    --verbose                Add unnecessary output to some analysis
     --limit value            When generating lists, limit the length to this value
     --recache                Recreate our serialized cache (TODO)
     --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons
     --rcode                  Analyze RCODEs
     --countds                Count DS records (per domain and in total)
+    --working                Summary of domains that is "working" (NOERROR on MX, SOA and A)
     --servfail               Toplist of name servers with SERVFAIL
     --servfails              List all domains with all SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
