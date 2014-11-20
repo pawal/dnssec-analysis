@@ -897,7 +897,7 @@ Optional arguments:
     --fake-date YY-MM-DD     Make this the current date for signature lifetime comparisons
     --rcode                  Analyze RCODEs
     --countds                Count DS records (per domain and in total)
-    --working                Summary of domains that is "working" (NOERROR on MX, SOA and A)
+    --listworking            Summary of domains that is "working" (NOERROR on MX, SOA or A)
     --servfail               Toplist of name servers with SERVFAIL
     --servfails              List all domains with all SERVFAIL
     --servfaillist ns        Get all domains that SERVFAIL on this name server
