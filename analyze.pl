@@ -887,7 +887,7 @@ analyze -d directory
 
 Required argument(s):
 
-    --directory directory    A directory with WhatWeb JSON files
+    --directory directory    A directory with collected JSON files
 
 Optional arguments:
 
