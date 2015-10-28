@@ -132,7 +132,7 @@ sub readDNS
 		push @{$result->{'dnskey'}->{'list'}}, {
 		    'algorithm' => $data->algorithm,
 		    'keylength' => $data->keylength,
-		    'is_sep'    => $data->is_sep,
+		    'is_sep'    => $data->sep,
                     'keytag'    => $data->keytag,
                     'key'       => $data->key,
 		};
